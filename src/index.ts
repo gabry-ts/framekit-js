@@ -10,3 +10,12 @@ export type {
   PrintOptions,
   SampleOptions,
 } from './types/options';
+export {
+  ErrorCode,
+  FrameKitError,
+  ColumnNotFoundError,
+  TypeMismatchError,
+  ShapeMismatchError,
+  ParseError,
+  IOError,
+} from './errors';
