@@ -21,4 +21,7 @@ export {
 } from './errors';
 export { BitArray } from './storage/bitarray';
 export { Column } from './storage/column';
-export { Float64Column } from './storage/numeric';
+export { Float64Column, Int32Column } from './storage/numeric';
+export { Utf8Column } from './storage/string';
+export { BooleanColumn } from './storage/boolean';
+export { DateColumn } from './storage/date';
