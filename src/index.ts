@@ -20,3 +20,5 @@ export {
   IOError,
 } from './errors';
 export { BitArray } from './storage/bitarray';
+export { Column } from './storage/column';
+export { Float64Column } from './storage/numeric';

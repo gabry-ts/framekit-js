@@ -73,6 +73,12 @@ export class BitArray {
     return result;
   }
 
+  clone(): BitArray {
+    const result = new BitArray(this._length);
+    result._buffer.set(this._buffer);
+    return result;
+  }
+
   not(): BitArray {
     const result = new BitArray(this._length);
     for (let i = 0; i < this._buffer.length; i++) {
