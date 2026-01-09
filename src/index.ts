@@ -26,3 +26,4 @@ export { Utf8Column } from './storage/string';
 export { BooleanColumn } from './storage/boolean';
 export { DateColumn } from './storage/date';
 export { Series } from './series';
+export { DataFrame } from './dataframe';
