@@ -67,6 +67,56 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<S>(clonedColumns, [...this._columnOrder]);
   }
 
+  select<K extends string & keyof S>(...columns: K[]): DataFrame<Pick<S, K>> {
+    for (const name of columns) {
+      if (!this._columns.has(name)) {
+        throw new ColumnNotFoundError(name, this._columnOrder);
+      }
+    }
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of columns) {
+      newColumns.set(name, this._columns.get(name)!);
+    }
+    return new DataFrame<Pick<S, K>>(newColumns, [...columns]);
+  }
+
+  drop<K extends string & keyof S>(...columns: K[]): DataFrame<Omit<S, K>> {
+    for (const name of columns) {
+      if (!this._columns.has(name)) {
+        throw new ColumnNotFoundError(name, this._columnOrder);
+      }
+    }
+    const dropSet = new Set<string>(columns);
+    const newColumns = new Map<string, Column<unknown>>();
+    const newOrder: string[] = [];
+    for (const name of this._columnOrder) {
+      if (!dropSet.has(name)) {
+        newColumns.set(name, this._columns.get(name)!);
+        newOrder.push(name);
+      }
+    }
+    return new DataFrame<Omit<S, K>>(newColumns, newOrder);
+  }
+
+  head(n = 5): DataFrame<S> {
+    return this.slice(0, Math.min(n, this.length));
+  }
+
+  tail(n = 5): DataFrame<S> {
+    const start = Math.max(0, this.length - n);
+    return this.slice(start, this.length);
+  }
+
+  slice(start: number, end?: number): DataFrame<S> {
+    const resolvedEnd = end === undefined ? this.length : Math.min(end, this.length);
+    const resolvedStart = Math.max(0, start);
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of this._columnOrder) {
+      newColumns.set(name, this._columns.get(name)!.slice(resolvedStart, resolvedEnd));
+    }
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
   static fromColumns<S extends Record<string, unknown> = Record<string, unknown>>(
     data: Record<string, unknown[]>,
   ): DataFrame<S> {
