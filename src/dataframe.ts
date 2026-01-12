@@ -135,6 +135,83 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<S>(newColumns, [...this._columnOrder]);
   }
 
+  withColumn<K extends string, V>(
+    name: K,
+    valuesOrFn: V[] | ((row: S) => V),
+  ): DataFrame<S & Record<K, V>> {
+    type Result = S & Record<K, V>;
+    let columnValues: V[];
+
+    if (typeof valuesOrFn === 'function') {
+      const fn = valuesOrFn as (row: S) => V;
+      columnValues = [];
+      for (let i = 0; i < this.length; i++) {
+        columnValues.push(fn(this.row(i)));
+      }
+    } else {
+      columnValues = valuesOrFn;
+      if (columnValues.length !== this.length) {
+        throw new ShapeMismatchError(
+          `Column '${name}' has length ${columnValues.length}, expected ${this.length}`,
+        );
+      }
+    }
+
+    const dtype = detectDType(columnValues as unknown[]);
+    const col = buildColumn(dtype, columnValues as unknown[]);
+
+    const newColumns = new Map<string, Column<unknown>>(this._columns);
+    newColumns.set(name, col);
+
+    const newOrder = this._columnOrder.includes(name)
+      ? [...this._columnOrder]
+      : [...this._columnOrder, name];
+
+    return new DataFrame<Result>(newColumns, newOrder);
+  }
+
+  rename(mapping: Record<string, string>): DataFrame<S> {
+    // Validate that all source columns exist
+    for (const oldName of Object.keys(mapping)) {
+      if (!this._columns.has(oldName)) {
+        throw new ColumnNotFoundError(oldName, this._columnOrder);
+      }
+    }
+
+    const newColumns = new Map<string, Column<unknown>>();
+    const newOrder: string[] = [];
+
+    for (const name of this._columnOrder) {
+      const newName = mapping[name] ?? name;
+      newColumns.set(newName, this._columns.get(name)!);
+      newOrder.push(newName);
+    }
+
+    return new DataFrame<S>(newColumns, newOrder);
+  }
+
+  cast(dtypes: Partial<Record<string & keyof S, DType>>): DataFrame<S> {
+    for (const colName of Object.keys(dtypes)) {
+      if (!this._columns.has(colName)) {
+        throw new ColumnNotFoundError(colName, this._columnOrder);
+      }
+    }
+
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of this._columnOrder) {
+      const targetDType = (dtypes as Record<string, DType>)[name];
+      if (targetDType) {
+        const series = new Series<unknown>(name, this._columns.get(name)!);
+        const casted = series.cast(targetDType);
+        newColumns.set(name, casted.column);
+      } else {
+        newColumns.set(name, this._columns.get(name)!);
+      }
+    }
+
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
   static fromColumns<S extends Record<string, unknown> = Record<string, unknown>>(
     data: Record<string, unknown[]>,
   ): DataFrame<S> {
