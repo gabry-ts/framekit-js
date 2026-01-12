@@ -190,6 +190,83 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<S>(newColumns, newOrder);
   }
 
+  filter(predicate: (row: S) => boolean): DataFrame<S> {
+    const indices: number[] = [];
+    for (let i = 0; i < this.length; i++) {
+      if (predicate(this.row(i))) {
+        indices.push(i);
+      }
+    }
+    const int32Indices = new Int32Array(indices);
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of this._columnOrder) {
+      newColumns.set(name, this._columns.get(name)!.take(int32Indices));
+    }
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
+  sortBy(
+    columns: string | string[],
+    order?: 'asc' | 'desc' | ('asc' | 'desc')[],
+  ): DataFrame<S> {
+    const cols = Array.isArray(columns) ? columns : [columns];
+    const orders = Array.isArray(order) ? order : cols.map(() => order ?? 'asc');
+
+    for (const name of cols) {
+      if (!this._columns.has(name)) {
+        throw new ColumnNotFoundError(name, this._columnOrder);
+      }
+    }
+
+    // Build arrays of raw values for each sort column (avoids repeated row() calls)
+    const sortValues: unknown[][] = cols.map((name) => {
+      const col = this._columns.get(name)!;
+      const vals: unknown[] = [];
+      for (let i = 0; i < this.length; i++) {
+        vals.push(col.get(i));
+      }
+      return vals;
+    });
+
+    // Create index array and sort it (stable sort in V8/modern JS engines)
+    const indices = Array.from({ length: this.length }, (_, i) => i);
+    indices.sort((a, b) => {
+      for (let c = 0; c < cols.length; c++) {
+        const va = sortValues[c]![a]!;
+        const vb = sortValues[c]![b]!;
+        const aIsNull = va === null || va === undefined;
+        const bIsNull = vb === null || vb === undefined;
+
+        if (aIsNull && bIsNull) continue;
+        if (aIsNull) return 1; // nulls last
+        if (bIsNull) return -1;
+
+        let cmp = 0;
+        if (va instanceof Date && vb instanceof Date) {
+          cmp = va.getTime() - vb.getTime();
+        } else if (typeof va === 'string' && typeof vb === 'string') {
+          cmp = va < vb ? -1 : va > vb ? 1 : 0;
+        } else if (typeof va === 'number' && typeof vb === 'number') {
+          cmp = va - vb;
+        } else if (typeof va === 'boolean' && typeof vb === 'boolean') {
+          cmp = (va ? 1 : 0) - (vb ? 1 : 0);
+        }
+
+        if (cmp !== 0) {
+          return orders[c] === 'desc' ? -cmp : cmp;
+        }
+      }
+      return 0;
+    });
+
+    const int32Indices = new Int32Array(indices);
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of this._columnOrder) {
+      newColumns.set(name, this._columns.get(name)!.take(int32Indices));
+    }
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
   cast(dtypes: Partial<Record<string & keyof S, DType>>): DataFrame<S> {
     for (const colName of Object.keys(dtypes)) {
       if (!this._columns.has(colName)) {
