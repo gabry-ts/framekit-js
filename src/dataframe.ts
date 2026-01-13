@@ -366,6 +366,100 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<S>(newColumns, [...this._columnOrder]);
   }
 
+  dropNull(columns?: string | string[]): DataFrame<S> {
+    const cols = columns === undefined
+      ? this._columnOrder
+      : Array.isArray(columns) ? columns : [columns];
+
+    for (const name of cols) {
+      if (!this._columns.has(name)) {
+        throw new ColumnNotFoundError(name, this._columnOrder);
+      }
+    }
+
+    const indices: number[] = [];
+    for (let i = 0; i < this.length; i++) {
+      let hasNull = false;
+      for (const name of cols) {
+        if (this._columns.get(name)!.get(i) === null) {
+          hasNull = true;
+          break;
+        }
+      }
+      if (!hasNull) {
+        indices.push(i);
+      }
+    }
+
+    return this._takeByIndices(indices);
+  }
+
+  fillNull(strategy: Record<string, unknown> | 'forward' | 'backward'): DataFrame<S> {
+    if (typeof strategy === 'string') {
+      return this._fillNullDirectional(strategy);
+    }
+
+    // fillNull({ col: value }) - fill specific columns with values
+    for (const colName of Object.keys(strategy)) {
+      if (!this._columns.has(colName)) {
+        throw new ColumnNotFoundError(colName, this._columnOrder);
+      }
+    }
+
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of this._columnOrder) {
+      const col = this._columns.get(name)!;
+      const fillValue = strategy[name];
+      if (fillValue !== undefined) {
+        const values: unknown[] = [];
+        for (let i = 0; i < col.length; i++) {
+          const v = col.get(i);
+          values.push(v === null ? fillValue : v);
+        }
+        newColumns.set(name, buildColumn(col.dtype, values));
+      } else {
+        newColumns.set(name, col);
+      }
+    }
+
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
+  private _fillNullDirectional(direction: 'forward' | 'backward'): DataFrame<S> {
+    const newColumns = new Map<string, Column<unknown>>();
+
+    for (const name of this._columnOrder) {
+      const col = this._columns.get(name)!;
+      if (col.nullCount === 0) {
+        newColumns.set(name, col);
+        continue;
+      }
+
+      const values: unknown[] = [];
+      for (let i = 0; i < col.length; i++) {
+        values.push(col.get(i));
+      }
+
+      if (direction === 'forward') {
+        for (let i = 1; i < values.length; i++) {
+          if (values[i] === null && values[i - 1] !== null) {
+            values[i] = values[i - 1];
+          }
+        }
+      } else {
+        for (let i = values.length - 2; i >= 0; i--) {
+          if (values[i] === null && values[i + 1] !== null) {
+            values[i] = values[i + 1];
+          }
+        }
+      }
+
+      newColumns.set(name, buildColumn(col.dtype, values));
+    }
+
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
   cast(dtypes: Partial<Record<string & keyof S, DType>>): DataFrame<S> {
     for (const colName of Object.keys(dtypes)) {
       if (!this._columns.has(colName)) {
