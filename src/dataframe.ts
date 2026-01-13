@@ -1,4 +1,5 @@
 import { DType } from './types/dtype';
+import type { SampleOptions } from './types/options';
 import { ColumnNotFoundError, ErrorCode, FrameKitError, ShapeMismatchError } from './errors';
 import { Column } from './storage/column';
 import { Float64Column, Int32Column } from './storage/numeric';
@@ -267,6 +268,104 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<S>(newColumns, [...this._columnOrder]);
   }
 
+  unique(columns?: string | string[], keep: 'first' | 'last' = 'first'): DataFrame<S> {
+    const cols = columns === undefined
+      ? this._columnOrder
+      : Array.isArray(columns) ? columns : [columns];
+
+    for (const name of cols) {
+      if (!this._columns.has(name)) {
+        throw new ColumnNotFoundError(name, this._columnOrder);
+      }
+    }
+
+    const seen = new Set<string>();
+    const indices: number[] = [];
+
+    if (keep === 'first') {
+      for (let i = 0; i < this.length; i++) {
+        const key = this._rowKey(i, cols);
+        if (!seen.has(key)) {
+          seen.add(key);
+          indices.push(i);
+        }
+      }
+    } else {
+      // keep === 'last': scan forward but only keep last occurrence
+      const lastIndex = new Map<string, number>();
+      const order: string[] = [];
+      for (let i = 0; i < this.length; i++) {
+        const key = this._rowKey(i, cols);
+        if (!lastIndex.has(key)) {
+          order.push(key);
+        }
+        lastIndex.set(key, i);
+      }
+      for (const key of order) {
+        indices.push(lastIndex.get(key)!);
+      }
+    }
+
+    return this._takeByIndices(indices);
+  }
+
+  sample(n: number, options?: SampleOptions): DataFrame<S> {
+    if (this.length === 0) {
+      return this.clone();
+    }
+
+    let count: number;
+    if (n >= 1) {
+      count = Math.min(Math.floor(n), this.length);
+    } else if (n > 0 && n < 1) {
+      count = Math.max(1, Math.round(n * this.length));
+    } else {
+      throw new FrameKitError(
+        ErrorCode.INVALID_OPERATION,
+        `sample size must be positive, got ${n}`,
+      );
+    }
+
+    const rng = options?.seed !== undefined ? seededRandom(options.seed) : Math.random;
+
+    // Fisher-Yates shuffle on index array, pick first `count` elements
+    const indices = Array.from({ length: this.length }, (_, i) => i);
+    for (let i = indices.length - 1; i > 0; i--) {
+      const j = Math.floor(rng() * (i + 1));
+      const tmp = indices[i]!;
+      indices[i] = indices[j]!;
+      indices[j] = tmp;
+    }
+
+    return this._takeByIndices(indices.slice(0, count));
+  }
+
+  private _rowKey(index: number, cols: string[]): string {
+    const parts: string[] = [];
+    for (const name of cols) {
+      const v = this._columns.get(name)!.get(index);
+      if (v === null) {
+        parts.push('\0null');
+      } else if (v instanceof Date) {
+        parts.push(`\0d${v.getTime()}`);
+      } else if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') {
+        parts.push(`\0${typeof v}${String(v)}`);
+      } else {
+        parts.push(`\0obj${JSON.stringify(v)}`);
+      }
+    }
+    return parts.join('\x01');
+  }
+
+  private _takeByIndices(indices: number[]): DataFrame<S> {
+    const int32Indices = new Int32Array(indices);
+    const newColumns = new Map<string, Column<unknown>>();
+    for (const name of this._columnOrder) {
+      newColumns.set(name, this._columns.get(name)!.take(int32Indices));
+    }
+    return new DataFrame<S>(newColumns, [...this._columnOrder]);
+  }
+
   cast(dtypes: Partial<Record<string & keyof S, DType>>): DataFrame<S> {
     for (const colName of Object.keys(dtypes)) {
       if (!this._columns.has(colName)) {
@@ -354,6 +453,17 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
   static empty<S extends Record<string, unknown> = Record<string, unknown>>(): DataFrame<S> {
     return new DataFrame<S>(new Map(), []);
   }
+}
+
+function seededRandom(seed: number): () => number {
+  // Simple mulberry32 PRNG
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
 }
 
 function detectDType(values: unknown[]): DType {
