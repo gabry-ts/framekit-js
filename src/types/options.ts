@@ -12,6 +12,7 @@ export interface CSVReadOptions {
   skipRows?: number;
   columns?: string[];
   nullValues?: string[];
+  comment?: string;
 }
 
 export interface CSVWriteOptions {
