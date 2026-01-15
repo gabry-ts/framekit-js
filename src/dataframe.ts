@@ -1,5 +1,5 @@
 import { DType } from './types/dtype';
-import type { CSVReadOptions, CSVWriteOptions, JSONReadOptions, JSONWriteOptions, SampleOptions } from './types/options';
+import type { CSVReadOptions, CSVWriteOptions, JSONReadOptions, JSONWriteOptions, PrintOptions, SampleOptions } from './types/options';
 import { ColumnNotFoundError, ErrorCode, FrameKitError, IOError, ShapeMismatchError } from './errors';
 import { Column } from './storage/column';
 import { Float64Column, Int32Column } from './storage/numeric';
@@ -523,6 +523,190 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<S>(newColumns, [...this._columnOrder]);
   }
 
+  toString(options?: PrintOptions): string {
+    const maxRows = options?.maxRows ?? 10;
+    const maxCols = options?.maxCols ?? 10;
+    const [nRows, nCols] = this.shape;
+
+    if (nCols === 0 || nRows === 0) {
+      return `Empty DataFrame\n0 rows x ${nCols} columns`;
+    }
+
+    // Determine which columns to show
+    const allCols = this._columnOrder;
+    let displayCols: string[];
+    if (allCols.length > maxCols) {
+      const half = Math.floor(maxCols / 2);
+      displayCols = [...allCols.slice(0, half), '...', ...allCols.slice(allCols.length - half)];
+    } else {
+      displayCols = [...allCols];
+    }
+
+    // Determine which rows to show
+    let rowIndices: number[];
+    if (nRows > maxRows) {
+      const half = Math.floor(maxRows / 2);
+      rowIndices = [
+        ...Array.from({ length: half }, (_, i) => i),
+        -1, // separator
+        ...Array.from({ length: half }, (_, i) => nRows - half + i),
+      ];
+    } else {
+      rowIndices = Array.from({ length: nRows }, (_, i) => i);
+    }
+
+    // Build cell values for each display column
+    const formatValue = (v: unknown): string => {
+      if (v === null) return 'null';
+      if (v instanceof Date) return v.toISOString();
+      if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') {
+        return String(v);
+      }
+      return JSON.stringify(v);
+    };
+
+    // Build table data: header + rows
+    const headerRow = ['', ...displayCols]; // first cell is row index header
+    const dataRows: string[][] = [];
+
+    for (const idx of rowIndices) {
+      if (idx === -1) {
+        dataRows.push(headerRow.map(() => '...'));
+        continue;
+      }
+      const cells: string[] = [String(idx)];
+      for (const colName of displayCols) {
+        if (colName === '...') {
+          cells.push('...');
+        } else {
+          cells.push(formatValue(this._columns.get(colName)!.get(idx)));
+        }
+      }
+      dataRows.push(cells);
+    }
+
+    // Calculate column widths
+    const colWidths: number[] = headerRow.map((h, ci) => {
+      let maxW = h.length;
+      for (const row of dataRows) {
+        maxW = Math.max(maxW, row[ci]!.length);
+      }
+      return maxW;
+    });
+
+    // Build formatted table
+    const pad = (s: string, w: number, ci: number): string => {
+      // Right-align the index column (first), left-align the rest
+      if (ci === 0) return s.padStart(w);
+      return s.padEnd(w);
+    };
+
+    const sep = '─';
+    const lines: string[] = [];
+
+    // Header
+    const headerLine = '│ ' + headerRow.map((h, ci) => pad(h, colWidths[ci]!, ci)).join(' │ ') + ' │';
+    const topBorder = '┌─' + colWidths.map((w) => sep.repeat(w)).join('─┬─') + '─┐';
+    const headerSep = '├─' + colWidths.map((w) => sep.repeat(w)).join('─┼─') + '─┤';
+    const bottomBorder = '└─' + colWidths.map((w) => sep.repeat(w)).join('─┴─') + '─┘';
+
+    lines.push(topBorder);
+    lines.push(headerLine);
+    lines.push(headerSep);
+
+    for (const row of dataRows) {
+      lines.push('│ ' + row.map((cell, ci) => pad(cell, colWidths[ci]!, ci)).join(' │ ') + ' │');
+    }
+
+    lines.push(bottomBorder);
+    lines.push(`${nRows} rows x ${nCols} columns`);
+
+    return lines.join('\n');
+  }
+
+  print(options?: PrintOptions): void {
+    console.log(this.toString(options));
+  }
+
+  describe(): DataFrame {
+    const statNames = ['count', 'mean', 'std', 'min', 'max'];
+    const resultColumns: Record<string, unknown[]> = { stat: statNames };
+
+    for (const name of this._columnOrder) {
+      const colObj = this._columns.get(name)!;
+      const dtype = colObj.dtype;
+
+      if (dtype === DType.Float64 || dtype === DType.Int32) {
+        const series = new Series<number>(name, colObj as Column<number>);
+        const count = series.length - series.nullCount;
+        const mean = series.mean();
+        const std = series.std();
+        const min = series.min();
+        const max = series.max();
+        resultColumns[name] = [count, mean, std, min, max];
+      }
+    }
+
+    return DataFrame.fromColumns(resultColumns);
+  }
+
+  info(): void {
+    const [nRows, nCols] = this.shape;
+    const lines: string[] = [];
+
+    lines.push(`DataFrame: ${nRows} rows x ${nCols} columns`);
+    lines.push('');
+
+    // Column info header
+    const colNameWidth = Math.max(6, ...this._columnOrder.map((n) => n.length));
+    const header = `${'Column'.padEnd(colNameWidth)}  ${'DType'.padEnd(10)}  ${'Null Count'.padEnd(10)}  Memory`;
+    lines.push(header);
+    lines.push('─'.repeat(header.length));
+
+    let totalMemory = 0;
+    for (const name of this._columnOrder) {
+      const colObj = this._columns.get(name)!;
+      const dtype = colObj.dtype;
+      const nullCount = colObj.nullCount;
+      const mem = this._estimateColumnMemory(colObj);
+      totalMemory += mem;
+      lines.push(
+        `${name.padEnd(colNameWidth)}  ${dtype.padEnd(10)}  ${String(nullCount).padEnd(10)}  ${formatBytes(mem)}`,
+      );
+    }
+
+    lines.push('─'.repeat(header.length));
+    lines.push(`Total memory: ${formatBytes(totalMemory)}`);
+
+    console.log(lines.join('\n'));
+  }
+
+  private _estimateColumnMemory(col: Column<unknown>): number {
+    const dtype = col.dtype;
+    switch (dtype) {
+      case DType.Float64:
+      case DType.Date:
+        return col.length * 8; // 8 bytes per float64
+      case DType.Int32:
+        return col.length * 4; // 4 bytes per int32
+      case DType.Boolean:
+        return col.length; // 1 byte per bool (Uint8Array)
+      case DType.Utf8: {
+        // Estimate: iterate and sum string lengths
+        let bytes = 0;
+        for (let i = 0; i < col.length; i++) {
+          const v = col.get(i);
+          if (v !== null && typeof v === 'string') {
+            bytes += v.length * 2; // JS strings are ~2 bytes per char
+          }
+        }
+        return bytes;
+      }
+      default:
+        return col.length * 8; // fallback estimate
+    }
+  }
+
   static fromColumns<S extends Record<string, unknown> = Record<string, unknown>>(
     data: Record<string, unknown[]>,
   ): DataFrame<S> {
@@ -851,4 +1035,11 @@ function buildColumn(dtype: DType, values: unknown[]): Column<unknown> {
         `Unsupported dtype for column construction: ${dtype}`,
       );
   }
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  return `${(bytes / (1024 * 1024 * 1024)).toFixed(1)} GB`;
 }
