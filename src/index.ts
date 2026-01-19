@@ -27,7 +27,24 @@ export { BooleanColumn } from './storage/boolean';
 export { DateColumn } from './storage/date';
 export { Series } from './series';
 export { DataFrame } from './dataframe';
-export { Expr, NamedExpr, col, lit } from './expr/expr';
+export {
+  Expr,
+  NamedExpr,
+  col,
+  lit,
+  AggExpr,
+  SumAggExpr,
+  MeanAggExpr,
+  CountAggExpr,
+  CountDistinctAggExpr,
+  MinAggExpr,
+  MaxAggExpr,
+  StdAggExpr,
+  FirstAggExpr,
+  LastAggExpr,
+  ListAggExpr,
+  ModeAggExpr,
+} from './expr/expr';
 
 import { DataFrame } from './dataframe';
 

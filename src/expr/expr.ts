@@ -77,6 +77,60 @@ export abstract class Expr<T> {
   not(): Expr<boolean> {
     return new NotExpr(this as unknown as Expr<boolean>);
   }
+
+  // ── Aggregation (returns AggExpr for use in groupBy().agg()) ──
+
+  private _aggColumnName(): string {
+    const deps = this.dependencies;
+    if (deps.length === 0) {
+      throw new Error('Aggregation requires a column reference');
+    }
+    return deps[0]!;
+  }
+
+  sum(): SumAggExpr {
+    return new SumAggExpr(this._aggColumnName());
+  }
+
+  mean(): MeanAggExpr {
+    return new MeanAggExpr(this._aggColumnName());
+  }
+
+  count(): CountAggExpr {
+    return new CountAggExpr(this._aggColumnName());
+  }
+
+  countDistinct(): CountDistinctAggExpr {
+    return new CountDistinctAggExpr(this._aggColumnName());
+  }
+
+  min(): MinAggExpr {
+    return new MinAggExpr(this._aggColumnName());
+  }
+
+  max(): MaxAggExpr {
+    return new MaxAggExpr(this._aggColumnName());
+  }
+
+  std(): StdAggExpr {
+    return new StdAggExpr(this._aggColumnName());
+  }
+
+  first(): FirstAggExpr<T> {
+    return new FirstAggExpr<T>(this._aggColumnName());
+  }
+
+  last(): LastAggExpr<T> {
+    return new LastAggExpr<T>(this._aggColumnName());
+  }
+
+  list(): ListAggExpr<T> {
+    return new ListAggExpr<T>(this._aggColumnName());
+  }
+
+  mode(): ModeAggExpr<T> {
+    return new ModeAggExpr<T>(this._aggColumnName());
+  }
 }
 
 export class NamedExpr<T> {
@@ -353,4 +407,200 @@ export function col<T = unknown>(name: string): Expr<T> {
 
 export function lit<T>(value: T): Expr<T> {
   return new LiteralExpr<T>(value);
+}
+
+// ── Aggregate Expressions ──
+
+function toComparableKey(v: unknown): string {
+  if (v instanceof Date) return `\0date${v.getTime()}`;
+  if (typeof v === 'string') return `\0str${v}`;
+  if (typeof v === 'number') return `\0num${v}`;
+  if (typeof v === 'boolean') return `\0bool${v}`;
+  return `\0other${String(v)}`;
+}
+
+export abstract class AggExpr<T> extends Expr<T> {
+  protected readonly _columnName: string;
+
+  constructor(columnName: string) {
+    super();
+    this._columnName = columnName;
+  }
+
+  get dependencies(): string[] {
+    return [this._columnName];
+  }
+
+  evaluate(df: DataFrame): Series<T> {
+    const series = df.col(this._columnName);
+    const result = this.evaluateColumn(series.column);
+    const values = [result] as (T | null)[];
+    const col = Float64Column.from(values as unknown as (number | null)[]);
+    return new Series<T>('', col as unknown as Column<T>);
+  }
+
+  abstract evaluateColumn(column: Column<unknown>): T | null;
+}
+
+export class SumAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number {
+    let total = 0;
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null && typeof v === 'number') {
+        total += v;
+      }
+    }
+    return total;
+  }
+}
+
+export class MeanAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number | null {
+    let total = 0;
+    let count = 0;
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null && typeof v === 'number') {
+        total += v;
+        count++;
+      }
+    }
+    return count === 0 ? null : total / count;
+  }
+}
+
+export class CountAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number {
+    let count = 0;
+    for (let i = 0; i < column.length; i++) {
+      if (column.get(i) !== null) {
+        count++;
+      }
+    }
+    return count;
+  }
+}
+
+export class CountDistinctAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number {
+    const seen = new Set<string>();
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null) {
+        seen.add(toComparableKey(v));
+      }
+    }
+    return seen.size;
+  }
+}
+
+export class MinAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number | null {
+    let result: number | null = null;
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null && typeof v === 'number') {
+        if (result === null || v < result) {
+          result = v;
+        }
+      }
+    }
+    return result;
+  }
+}
+
+export class MaxAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number | null {
+    let result: number | null = null;
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null && typeof v === 'number') {
+        if (result === null || v > result) {
+          result = v;
+        }
+      }
+    }
+    return result;
+  }
+}
+
+export class StdAggExpr extends AggExpr<number> {
+  evaluateColumn(column: Column<unknown>): number | null {
+    const values: number[] = [];
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null && typeof v === 'number') {
+        values.push(v);
+      }
+    }
+    if (values.length < 2) return null;
+    const mean = values.reduce((a, b) => a + b, 0) / values.length;
+    const sumSqDiff = values.reduce((acc, v) => acc + (v - mean) ** 2, 0);
+    return Math.sqrt(sumSqDiff / (values.length - 1));
+  }
+}
+
+export class FirstAggExpr<T> extends AggExpr<T> {
+  evaluateColumn(column: Column<unknown>): T | null {
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null) {
+        return v as T;
+      }
+    }
+    return null;
+  }
+}
+
+export class LastAggExpr<T> extends AggExpr<T> {
+  evaluateColumn(column: Column<unknown>): T | null {
+    for (let i = column.length - 1; i >= 0; i--) {
+      const v = column.get(i);
+      if (v !== null) {
+        return v as T;
+      }
+    }
+    return null;
+  }
+}
+
+export class ListAggExpr<T> extends AggExpr<T[]> {
+  evaluateColumn(column: Column<unknown>): T[] {
+    const result: T[] = [];
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null) {
+        result.push(v as T);
+      }
+    }
+    return result;
+  }
+}
+
+export class ModeAggExpr<T> extends AggExpr<T> {
+  evaluateColumn(column: Column<unknown>): T | null {
+    const counts = new Map<string, { value: T; count: number }>();
+    for (let i = 0; i < column.length; i++) {
+      const v = column.get(i);
+      if (v !== null) {
+        const key = toComparableKey(v);
+        const entry = counts.get(key);
+        if (entry) {
+          entry.count++;
+        } else {
+          counts.set(key, { value: v as T, count: 1 });
+        }
+      }
+    }
+    let best: T | null = null;
+    let bestCount = 0;
+    for (const entry of counts.values()) {
+      if (entry.count > bestCount) {
+        best = entry.value;
+        bestCount = entry.count;
+      }
+    }
+    return best;
+  }
 }
