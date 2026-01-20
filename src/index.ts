@@ -27,6 +27,7 @@ export { BooleanColumn } from './storage/boolean';
 export { DateColumn } from './storage/date';
 export { Series } from './series';
 export { DataFrame } from './dataframe';
+export { GroupBy } from './ops/groupby';
 export {
   Expr,
   NamedExpr,

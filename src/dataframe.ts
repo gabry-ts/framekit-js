@@ -11,6 +11,7 @@ import { Expr, col } from './expr/expr';
 import { parseCSV } from './io/csv/parser';
 import { writeCSV } from './io/csv/writer';
 import { writeJSON, writeNDJSON } from './io/json/writer';
+import { GroupBy } from './ops/groupby';
 
 export class DataFrame<S extends Record<string, unknown> = Record<string, unknown>> {
   private readonly _columns: Map<string, Column<unknown>>;
@@ -379,6 +380,10 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     }
 
     return this._takeByIndices(indices.slice(0, count));
+  }
+
+  groupBy<K extends string & keyof S>(...keys: K[]): GroupBy<S, K> {
+    return new GroupBy<S, K>(this, keys);
   }
 
   private _rowKey(index: number, cols: string[]): string {
