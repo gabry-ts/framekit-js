@@ -12,6 +12,8 @@ import { parseCSV } from './io/csv/parser';
 import { writeCSV } from './io/csv/writer';
 import { writeJSON, writeNDJSON } from './io/json/writer';
 import { GroupBy } from './ops/groupby';
+import { hashJoin } from './ops/join';
+import type { JoinType } from './ops/join';
 
 export class DataFrame<S extends Record<string, unknown> = Record<string, unknown>> {
   private readonly _columns: Map<string, Column<unknown>>;
@@ -384,6 +386,14 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
 
   groupBy<K extends string & keyof S>(...keys: K[]): GroupBy<S, K> {
     return new GroupBy<S, K>(this, keys);
+  }
+
+  join<R extends Record<string, unknown>>(
+    other: DataFrame<R>,
+    on: string | string[],
+    how: JoinType = 'inner',
+  ): DataFrame<Record<string, unknown>> {
+    return hashJoin(this, other, on, how);
   }
 
   private _rowKey(index: number, cols: string[]): string {

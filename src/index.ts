@@ -28,6 +28,7 @@ export { DateColumn } from './storage/date';
 export { Series } from './series';
 export { DataFrame } from './dataframe';
 export { GroupBy } from './ops/groupby';
+export type { JoinType } from './ops/join';
 export {
   Expr,
   NamedExpr,
