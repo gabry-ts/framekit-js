@@ -5,6 +5,7 @@ import { Float64Column, Int32Column } from './storage/numeric';
 import { Utf8Column } from './storage/string';
 import { BooleanColumn } from './storage/boolean';
 import { DateColumn } from './storage/date';
+import { StringAccessor } from './accessors/string-accessor';
 
 export class Series<T> {
   private readonly _name: string;
@@ -33,6 +34,10 @@ export class Series<T> {
 
   get column(): Column<T> {
     return this._column;
+  }
+
+  get str(): StringAccessor {
+    return new StringAccessor(this as unknown as Series<string>);
   }
 
   get(index: number): T | null {
