@@ -13,7 +13,7 @@ import { writeCSV } from './io/csv/writer';
 import { writeJSON, writeNDJSON } from './io/json/writer';
 import { GroupBy } from './ops/groupby';
 import { hashJoin } from './ops/join';
-import type { JoinType } from './ops/join';
+import type { JoinType, JoinOnMapping, JoinOptions } from './ops/join';
 
 export class DataFrame<S extends Record<string, unknown> = Record<string, unknown>> {
   private readonly _columns: Map<string, Column<unknown>>;
@@ -390,10 +390,11 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
 
   join<R extends Record<string, unknown>>(
     other: DataFrame<R>,
-    on: string | string[],
+    on: string | string[] | JoinOnMapping,
     how: JoinType = 'inner',
+    options?: JoinOptions,
   ): DataFrame<Record<string, unknown>> {
-    return hashJoin(this, other, on, how);
+    return hashJoin(this, other, on, how, options);
   }
 
   private _rowKey(index: number, cols: string[]): string {
