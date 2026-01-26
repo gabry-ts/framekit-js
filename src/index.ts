@@ -33,6 +33,7 @@ export { DataFrame } from './dataframe';
 export { GroupBy } from './ops/groupby';
 export type { JoinType, JoinOnMapping, JoinOptions } from './ops/join';
 export type { PivotOptions, PivotAggFunc } from './ops/pivot';
+export type { MeltOptions } from './ops/melt';
 export {
   Expr,
   NamedExpr,
