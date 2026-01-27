@@ -19,6 +19,7 @@ import type { PivotOptions } from './ops/pivot';
 import { melt } from './ops/melt';
 import type { MeltOptions } from './ops/melt';
 import { transpose, concat } from './ops/reshape';
+import { union, intersection, difference } from './ops/setops';
 
 export class DataFrame<S extends Record<string, unknown> = Record<string, unknown>> {
   private readonly _columns: Map<string, Column<unknown>>;
@@ -992,6 +993,18 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
       rows.push(row);
     }
     return { header, rows };
+  }
+
+  union(other: DataFrame<Record<string, unknown>>): DataFrame<Record<string, unknown>> {
+    return union(this, other);
+  }
+
+  intersection(other: DataFrame<Record<string, unknown>>): DataFrame<Record<string, unknown>> {
+    return intersection(this, other);
+  }
+
+  difference(other: DataFrame<Record<string, unknown>>): DataFrame<Record<string, unknown>> {
+    return difference(this, other);
   }
 }
 
