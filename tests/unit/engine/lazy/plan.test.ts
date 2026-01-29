@@ -69,6 +69,80 @@ describe('LazyFrame', () => {
     expect(plan).toContain('FILTER');
     expect(plan).toContain('SCAN');
   });
+
+  it('groupBy(...keys).agg(specs) appends groupby node', () => {
+    const lf = df.lazy().groupBy('b').agg(col<number>('a'));
+    expect(lf._plan.type).toBe('groupby');
+    const plan = lf.explain();
+    expect(plan).toContain('GROUPBY [b]');
+    expect(plan).toContain('SCAN');
+  });
+
+  it('groupBy with multiple keys', () => {
+    const lf = df.lazy().groupBy('a', 'b').agg(col<number>('a'));
+    expect(lf._plan.type).toBe('groupby');
+    expect(lf.explain()).toContain('GROUPBY [a, b]');
+  });
+
+  it('sortBy(column, order) appends sort node', () => {
+    const lf = df.lazy().sortBy('a', true);
+    expect(lf._plan.type).toBe('sort');
+    expect(lf.explain()).toContain('SORT [a DESC]');
+  });
+
+  it('sortBy defaults to ascending', () => {
+    const lf = df.lazy().sortBy('a');
+    expect(lf.explain()).toContain('SORT [a ASC]');
+  });
+
+  it('head(n) appends limit node', () => {
+    const lf = df.lazy().head(5);
+    expect(lf._plan.type).toBe('limit');
+    expect(lf.explain()).toContain('LIMIT [5]');
+  });
+
+  it('unique() appends distinct node', () => {
+    const lf = df.lazy().unique();
+    expect(lf._plan.type).toBe('distinct');
+    expect(lf.explain()).toContain('DISTINCT');
+  });
+
+  it('unique(subset) appends distinct node with subset', () => {
+    const lf = df.lazy().unique(['a']);
+    expect(lf._plan.type).toBe('distinct');
+    expect(lf.explain()).toContain('DISTINCT [a]');
+  });
+
+  it('all methods return new LazyFrame (immutable plan building)', () => {
+    const lf = df.lazy();
+    const filtered = lf.filter(col<number>('a').gt(1));
+    const selected = lf.select('a');
+    const grouped = lf.groupBy('b').agg(col<number>('a'));
+    const sorted = lf.sortBy('a');
+    const headed = lf.head(2);
+    const uniqued = lf.unique();
+
+    expect(lf._plan.type).toBe('scan');
+    expect(filtered._plan.type).toBe('filter');
+    expect(selected._plan.type).toBe('select');
+    expect(grouped._plan.type).toBe('groupby');
+    expect(sorted._plan.type).toBe('sort');
+    expect(headed._plan.type).toBe('limit');
+    expect(uniqued._plan.type).toBe('distinct');
+  });
+
+  it('no data processing happens until collect()', () => {
+    const lf = df
+      .lazy()
+      .filter(col<number>('a').gt(1))
+      .groupBy('b')
+      .agg(col<number>('a'))
+      .sortBy('b')
+      .head(10)
+      .unique();
+    const result = lf.collect();
+    expect(result).toBeInstanceOf(Promise);
+  });
 });
 
 describe('explainPlan', () => {

@@ -6,6 +6,30 @@ type AnyExpr = Expr<any>;
 import type { PlanNode } from './engine/lazy/plan';
 import { createScanNode, explainPlan } from './engine/lazy/plan';
 
+export class LazyGroupBy<S extends Record<string, unknown> = Record<string, unknown>> {
+  /** @internal */
+  readonly _source: DataFrame<S>;
+  /** @internal */
+  readonly _plan: PlanNode;
+  /** @internal */
+  readonly _keys: readonly string[];
+
+  constructor(source: DataFrame<S>, plan: PlanNode, keys: readonly string[]) {
+    this._source = source;
+    this._plan = plan;
+    this._keys = keys;
+  }
+
+  agg(...specs: AnyExpr[]): LazyFrame<S> {
+    return new LazyFrame<S>(this._source, {
+      type: 'groupby',
+      input: this._plan,
+      keys: [...this._keys],
+      aggs: specs,
+    });
+  }
+}
+
 export class LazyFrame<S extends Record<string, unknown> = Record<string, unknown>> {
   /** @internal */
   readonly _source: DataFrame<S>;
@@ -50,6 +74,10 @@ export class LazyFrame<S extends Record<string, unknown> = Record<string, unknow
     });
   }
 
+  sortBy(by: string & keyof S, descending = false): LazyFrame<S> {
+    return this.sort(by, descending);
+  }
+
   limit(n: number): LazyFrame<S> {
     return new LazyFrame<S>(this._source, {
       type: 'limit',
@@ -58,12 +86,24 @@ export class LazyFrame<S extends Record<string, unknown> = Record<string, unknow
     });
   }
 
+  head(n: number): LazyFrame<S> {
+    return this.limit(n);
+  }
+
   distinct(subset?: (string & keyof S)[]): LazyFrame<S> {
     return new LazyFrame<S>(this._source, {
       type: 'distinct',
       input: this._plan,
       subset,
     });
+  }
+
+  unique(subset?: (string & keyof S)[]): LazyFrame<S> {
+    return this.distinct(subset);
+  }
+
+  groupBy(...keys: (string & keyof S)[]): LazyGroupBy<S> {
+    return new LazyGroupBy<S>(this._source, this._plan, keys);
   }
 
   explain(): string {

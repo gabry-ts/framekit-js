@@ -54,7 +54,7 @@ export {
   ModeAggExpr,
 } from './expr/expr';
 export { when, WhenBuilder, ThenBuilder } from './expr/conditional-expr';
-export { LazyFrame } from './lazy';
+export { LazyFrame, LazyGroupBy } from './lazy';
 export type {
   PlanNode,
   ScanNode,
