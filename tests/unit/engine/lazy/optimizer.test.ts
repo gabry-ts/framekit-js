@@ -152,3 +152,136 @@ describe('optimize – predicate pushdown', () => {
     }
   });
 });
+
+describe('optimize – projection pushdown', () => {
+  const scan = createScanNode();
+
+  it('pushes select columns down to scan node', () => {
+    const plan: PlanNode = {
+      type: 'select',
+      input: scan,
+      columns: ['a', 'b'],
+    };
+    const result = optimize(plan);
+    expect(result.type).toBe('select');
+    if (result.type === 'select') {
+      expect(result.input.type).toBe('scan');
+      if (result.input.type === 'scan') {
+        expect(result.input.projection).toEqual(['a', 'b']);
+      }
+    }
+  });
+
+  it('includes filter predicate columns even if not in final select', () => {
+    // select [a] -> filter(x > 5) -> scan
+    // scan should load a AND x
+    const plan: PlanNode = {
+      type: 'select',
+      input: {
+        type: 'filter',
+        input: scan,
+        predicate: col('x').gt(5),
+      },
+      columns: ['a'],
+    };
+    const result = optimize(plan);
+    // After predicate pushdown, filter goes below select (but predicate pushdown
+    // pushes filter below select, so structure is select -> filter -> scan)
+    // The scan should have projection including both 'a' (from select) and 'x' (from filter)
+    function findScan(node: PlanNode): PlanNode | undefined {
+      if (node.type === 'scan') return node;
+      if ('input' in node) return findScan(node.input);
+      return undefined;
+    }
+    const scanNode = findScan(result);
+    expect(scanNode).toBeDefined();
+    expect(scanNode!.type).toBe('scan');
+    if (scanNode?.type === 'scan') {
+      expect(scanNode.projection).toContain('a');
+      expect(scanNode.projection).toContain('x');
+    }
+  });
+
+  it('pushes projection through groupBy (only keys + agg columns)', () => {
+    const plan: PlanNode = {
+      type: 'groupby',
+      input: scan,
+      keys: ['category'],
+      aggs: [col('amount').sum()],
+    };
+    const result = optimize(plan);
+    function findScan(node: PlanNode): PlanNode | undefined {
+      if (node.type === 'scan') return node;
+      if ('input' in node) return findScan(node.input);
+      return undefined;
+    }
+    const scanNode = findScan(result);
+    expect(scanNode).toBeDefined();
+    if (scanNode?.type === 'scan') {
+      expect(scanNode.projection).toContain('category');
+      expect(scanNode.projection).toContain('amount');
+      expect(scanNode.projection).toHaveLength(2);
+    }
+  });
+
+  it('includes sort column in projection', () => {
+    // select [a] -> sort by b -> scan
+    // scan needs both a and b
+    const plan: PlanNode = {
+      type: 'select',
+      input: {
+        type: 'sort',
+        input: scan,
+        by: 'b',
+        descending: false,
+      },
+      columns: ['a'],
+    };
+    const result = optimize(plan);
+    function findScan(node: PlanNode): PlanNode | undefined {
+      if (node.type === 'scan') return node;
+      if ('input' in node) return findScan(node.input);
+      return undefined;
+    }
+    const scanNode = findScan(result);
+    expect(scanNode).toBeDefined();
+    if (scanNode?.type === 'scan') {
+      expect(scanNode.projection).toContain('a');
+      expect(scanNode.projection).toContain('b');
+    }
+  });
+
+  it('explain output shows reduced column sets at scan nodes', () => {
+    const plan: PlanNode = {
+      type: 'select',
+      input: scan,
+      columns: ['name', 'age'],
+    };
+    const result = optimize(plan);
+    const explained = explainPlan(result);
+    expect(explained).toContain('cols=age, name');
+  });
+
+  it('handles project expressions to collect only needed columns', () => {
+    // project [col(a) + col(b)] -> scan
+    // scan should load a and b
+    const plan: PlanNode = {
+      type: 'project',
+      input: scan,
+      exprs: [col('a').add(col('b'))],
+    };
+    const result = optimize(plan);
+    function findScan(node: PlanNode): PlanNode | undefined {
+      if (node.type === 'scan') return node;
+      if ('input' in node) return findScan(node.input);
+      return undefined;
+    }
+    const scanNode = findScan(result);
+    expect(scanNode).toBeDefined();
+    if (scanNode?.type === 'scan') {
+      expect(scanNode.projection).toContain('a');
+      expect(scanNode.projection).toContain('b');
+      expect(scanNode.projection).toHaveLength(2);
+    }
+  });
+});

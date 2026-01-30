@@ -6,6 +6,7 @@ type AnyExpr = Expr<any>;
 export interface ScanNode {
   readonly type: 'scan';
   readonly id: number;
+  readonly projection?: string[] | undefined;
 }
 
 export interface FilterNode {
@@ -81,6 +82,9 @@ export function explainPlan(node: PlanNode, indent = 0): string {
   const pad = '  '.repeat(indent);
   switch (node.type) {
     case 'scan':
+      if (node.projection) {
+        return `${pad}SCAN [id=${node.id}, cols=${node.projection.join(', ')}]`;
+      }
       return `${pad}SCAN [id=${node.id}]`;
     case 'filter':
       return `${pad}FILTER\n${explainPlan(node.input, indent + 1)}`;

@@ -16,6 +16,9 @@ export function execute<S extends Record<string, unknown>>(
   function run(node: PlanNode): AnyDF {
     switch (node.type) {
       case 'scan':
+        if (node.projection) {
+          return source.select(...node.projection);
+        }
         return source;
 
       case 'filter': {
