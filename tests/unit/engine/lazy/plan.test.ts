@@ -136,7 +136,7 @@ describe('LazyFrame', () => {
       .lazy()
       .filter(col<number>('a').gt(1))
       .groupBy('b')
-      .agg(col<number>('a'))
+      .agg(col<number>('a').sum())
       .sortBy('b')
       .head(10)
       .unique();
