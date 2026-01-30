@@ -6,6 +6,7 @@ type AnyExpr = Expr<any>;
 import type { PlanNode } from './engine/lazy/plan';
 import { createScanNode, explainPlan } from './engine/lazy/plan';
 import { execute } from './engine/lazy/executor';
+import { optimize } from './engine/lazy/optimizer';
 
 export class LazyGroupBy<S extends Record<string, unknown> = Record<string, unknown>> {
   /** @internal */
@@ -108,7 +109,10 @@ export class LazyFrame<S extends Record<string, unknown> = Record<string, unknow
   }
 
   explain(): string {
-    return explainPlan(this._plan);
+    const original = explainPlan(this._plan);
+    const optimizedPlan = optimize(this._plan);
+    const optimized = explainPlan(optimizedPlan);
+    return `ORIGINAL:\n${original}\n\nOPTIMIZED:\n${optimized}`;
   }
 
   collect(): Promise<DataFrame<S>> {

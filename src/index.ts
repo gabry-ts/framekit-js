@@ -68,6 +68,7 @@ export type {
   DistinctNode,
 } from './engine/lazy/plan';
 export { execute } from './engine/lazy/executor';
+export { optimize } from './engine/lazy/optimizer';
 export { StringExprAccessor } from './expr/string-expr';
 export { DateExprAccessor } from './expr/date-expr';
 import './expr/expr-accessors';
