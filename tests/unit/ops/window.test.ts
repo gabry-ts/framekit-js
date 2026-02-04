@@ -361,3 +361,89 @@ describe('Offset window functions', () => {
     });
   });
 });
+
+describe('Window .over() partitioning', () => {
+  const df = DataFrame.fromRows([
+    { region: 'East', product: 'A', amount: 100 },
+    { region: 'East', product: 'A', amount: 200 },
+    { region: 'West', product: 'B', amount: 300 },
+    { region: 'East', product: 'B', amount: 150 },
+    { region: 'West', product: 'B', amount: 100 },
+  ]);
+
+  function getValues(result: DataFrame, colName: string): (number | null)[] {
+    const vals: (number | null)[] = [];
+    for (let i = 0; i < result.length; i++) {
+      vals.push(result.col(colName).get(i) as number | null);
+    }
+    return vals;
+  }
+
+  describe('rank().over()', () => {
+    it('should compute rank within each partition', () => {
+      const result = df.withColumn('r', col('amount').rank().over('region'));
+      const ranks = getValues(result, 'r');
+      // East: [100, 200, 150] → sorted [100(0), 150(3), 200(1)] → ranks [1, 3, 2]
+      // West: [300, 100] → sorted [100(4), 300(2)] → ranks [2, 1]
+      // Original order: idx0=East(1), idx1=East(3), idx2=West(2), idx3=East(2), idx4=West(1)
+      expect(ranks).toEqual([1, 3, 2, 2, 1]);
+    });
+  });
+
+  describe('cumSum().over()', () => {
+    it('should compute running sum within each partition', () => {
+      const result = df.withColumn('cs', col('amount').cumSum().over('region'));
+      const sums = getValues(result, 'cs');
+      // East rows (indices 0,1,3): amounts [100, 200, 150] → cumSum [100, 300, 450]
+      // West rows (indices 2,4): amounts [300, 100] → cumSum [300, 400]
+      expect(sums).toEqual([100, 300, 300, 450, 400]);
+    });
+  });
+
+  describe('shift().over()', () => {
+    it('should compute lag within each partition', () => {
+      const result = df.withColumn('s', col('amount').shift(1).over('region'));
+      const shifted = getValues(result, 's');
+      // East rows (indices 0,1,3): amounts [100, 200, 150] → shift(1) [null, 100, 200]
+      // West rows (indices 2,4): amounts [300, 100] → shift(1) [null, 300]
+      expect(shifted).toEqual([null, 100, null, 200, 300]);
+    });
+  });
+
+  describe('rollingMean().over()', () => {
+    it('should compute rolling mean within each partition', () => {
+      const dfLarger = DataFrame.fromRows([
+        { region: 'East', amount: 10 },
+        { region: 'East', amount: 20 },
+        { region: 'East', amount: 30 },
+        { region: 'West', amount: 100 },
+        { region: 'West', amount: 200 },
+        { region: 'West', amount: 300 },
+      ]);
+      const result = dfLarger.withColumn('rm', col('amount').rollingMean(2).over('region'));
+      const means = getValues(result, 'rm');
+      // East rows (indices 0,1,2): [10, 20, 30] → rollingMean(2) [null, 15, 25]
+      // West rows (indices 3,4,5): [100, 200, 300] → rollingMean(2) [null, 150, 250]
+      expect(means).toEqual([null, 15, 25, null, 150, 250]);
+    });
+  });
+
+  describe('multiple partition columns', () => {
+    it('should partition by multiple columns with .over()', () => {
+      const result = df.withColumn('cs', col('amount').cumSum().over('region', 'product'));
+      const sums = getValues(result, 'cs');
+      // (East, A) rows (indices 0,1): amounts [100, 200] → cumSum [100, 300]
+      // (West, B) rows (indices 2,4): amounts [300, 100] → cumSum [300, 400]
+      // (East, B) rows (index 3): amounts [150] → cumSum [150]
+      expect(sums).toEqual([100, 300, 300, 150, 400]);
+    });
+  });
+
+  describe('with withColumn', () => {
+    it('should work correctly with withColumn', () => {
+      const result = df.withColumn('partitioned_rank', col('amount').rank().over('region'));
+      expect(result.columns).toContain('partitioned_rank');
+      expect(result.length).toBe(5);
+    });
+  });
+});

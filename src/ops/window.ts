@@ -1,6 +1,7 @@
-import type { DataFrame } from '../dataframe';
+import { DataFrame } from '../dataframe';
 import { Expr } from '../expr/expr';
 import { Series } from '../series';
+import { Column } from '../storage/column';
 import { Float64Column } from '../storage/numeric';
 
 // ── Window Ranking Expression Base ──
@@ -685,6 +686,81 @@ export class EwmExpr extends Expr<number> {
   }
 }
 
+// ── Partitioned Window Expression (.over()) ──
+
+export class PartitionedWindowExpr extends Expr<number> {
+  private readonly _inner: Expr<number>;
+  private readonly _partitionCols: string[];
+
+  constructor(inner: Expr<number>, partitionCols: string[]) {
+    super();
+    this._inner = inner;
+    this._partitionCols = partitionCols;
+  }
+
+  get dependencies(): string[] {
+    return [...new Set([...this._inner.dependencies, ...this._partitionCols])];
+  }
+
+  toString(): string {
+    return `${this._inner.toString()}.over(${this._partitionCols.join(', ')})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const len = df.length;
+    const results = new Array<number | null>(len);
+
+    // Build partition map: serialized-key → row indices
+    const partitionMap = new Map<string, number[]>();
+    const partCols: Column<unknown>[] = this._partitionCols.map((name) => df.col(name).column);
+
+    for (let i = 0; i < len; i++) {
+      const key = serializeKey(partCols, i);
+      const group = partitionMap.get(key);
+      if (group) {
+        group.push(i);
+      } else {
+        partitionMap.set(key, [i]);
+      }
+    }
+
+    // For each partition, build a sub-DataFrame, evaluate inner expr, scatter results back
+    const columnOrder = df.columns;
+    for (const indices of partitionMap.values()) {
+      const int32Indices = new Int32Array(indices);
+      const newColumns = new Map<string, Column<unknown>>();
+      for (const name of columnOrder) {
+        newColumns.set(name, df.col(name).column.take(int32Indices));
+      }
+      const subDf = new DataFrame(newColumns, columnOrder);
+
+      const subResult = this._inner.evaluate(subDf);
+      for (let i = 0; i < indices.length; i++) {
+        results[indices[i]!] = subResult.get(i);
+      }
+    }
+
+    return new Series<number>('over', Float64Column.from(results));
+  }
+}
+
+function serializeKey(columns: Column<unknown>[], index: number): string {
+  const parts: string[] = [];
+  for (const column of columns) {
+    const v = column.get(index);
+    if (v === null) {
+      parts.push('\0null');
+    } else if (v instanceof Date) {
+      parts.push(`\0d${v.getTime()}`);
+    } else if (typeof v === 'number' || typeof v === 'string' || typeof v === 'boolean') {
+      parts.push(`\0${typeof v}${String(v)}`);
+    } else {
+      parts.push(`\0obj${JSON.stringify(v)}`);
+    }
+  }
+  return parts.join('\x01');
+}
+
 // ── Module augmentation: add methods to Expr ──
 
 declare module '../expr/expr' {
@@ -709,6 +785,7 @@ declare module '../expr/expr' {
     rollingMin(windowSize: number): Expr<number>;
     rollingMax(windowSize: number): Expr<number>;
     ewm(alpha: number): Expr<number>;
+    over(...partitionCols: string[]): Expr<number>;
   }
 }
 
@@ -786,4 +863,8 @@ Expr.prototype.rollingMax = function (this: Expr<unknown>, windowSize: number): 
 
 Expr.prototype.ewm = function (this: Expr<unknown>, alpha: number): Expr<number> {
   return new EwmExpr(this, alpha);
+};
+
+Expr.prototype.over = function (this: Expr<number>, ...partitionCols: string[]): Expr<number> {
+  return new PartitionedWindowExpr(this, partitionCols);
 };
