@@ -446,6 +446,245 @@ export class PctChangeExpr extends OffsetExpr {
   }
 }
 
+// ── Rolling Window Expression Base ──
+
+abstract class RollingExpr extends Expr<number> {
+  protected readonly _source: Expr<unknown>;
+  protected readonly _windowSize: number;
+
+  constructor(source: Expr<unknown>, windowSize: number) {
+    super();
+    this._source = source;
+    this._windowSize = windowSize;
+  }
+
+  get dependencies(): string[] {
+    return this._source.dependencies;
+  }
+
+  protected _getNumericValues(df: DataFrame): (number | null)[] {
+    const series = this._source.evaluate(df);
+    const len = series.length;
+    const values: (number | null)[] = [];
+    for (let i = 0; i < len; i++) {
+      const v = series.get(i);
+      values.push(v !== null && typeof v === 'number' ? v : null);
+    }
+    return values;
+  }
+}
+
+// ── rollingMean(n): n-row moving average ──
+
+export class RollingMeanExpr extends RollingExpr {
+  toString(): string {
+    return `rollingMean(${this._source.toString()}, ${this._windowSize})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const values = this._getNumericValues(df);
+    const len = values.length;
+    const results = new Array<number | null>(len);
+
+    for (let i = 0; i < len; i++) {
+      if (i < this._windowSize - 1) {
+        results[i] = null;
+      } else {
+        let sum = 0;
+        let count = 0;
+        for (let j = i - this._windowSize + 1; j <= i; j++) {
+          const v = values[j]!;
+          if (v !== null) {
+            sum += v;
+            count++;
+          }
+        }
+        results[i] = count > 0 ? sum / count : null;
+      }
+    }
+
+    return new Series<number>('rollingMean', Float64Column.from(results));
+  }
+}
+
+// ── rollingSum(n): n-row moving sum ──
+
+export class RollingSumExpr extends RollingExpr {
+  toString(): string {
+    return `rollingSum(${this._source.toString()}, ${this._windowSize})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const values = this._getNumericValues(df);
+    const len = values.length;
+    const results = new Array<number | null>(len);
+
+    for (let i = 0; i < len; i++) {
+      if (i < this._windowSize - 1) {
+        results[i] = null;
+      } else {
+        let sum = 0;
+        for (let j = i - this._windowSize + 1; j <= i; j++) {
+          const v = values[j]!;
+          if (v !== null) {
+            sum += v;
+          }
+        }
+        results[i] = sum;
+      }
+    }
+
+    return new Series<number>('rollingSum', Float64Column.from(results));
+  }
+}
+
+// ── rollingStd(n): n-row moving standard deviation (population) ──
+
+export class RollingStdExpr extends RollingExpr {
+  toString(): string {
+    return `rollingStd(${this._source.toString()}, ${this._windowSize})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const values = this._getNumericValues(df);
+    const len = values.length;
+    const results = new Array<number | null>(len);
+
+    for (let i = 0; i < len; i++) {
+      if (i < this._windowSize - 1) {
+        results[i] = null;
+      } else {
+        const windowVals: number[] = [];
+        for (let j = i - this._windowSize + 1; j <= i; j++) {
+          const v = values[j]!;
+          if (v !== null) {
+            windowVals.push(v);
+          }
+        }
+        if (windowVals.length < 2) {
+          results[i] = null;
+        } else {
+          let sum = 0;
+          for (const v of windowVals) sum += v;
+          const mean = sum / windowVals.length;
+          let sqDiffSum = 0;
+          for (const v of windowVals) sqDiffSum += (v - mean) * (v - mean);
+          // sample std (ddof=1) like pandas
+          results[i] = Math.sqrt(sqDiffSum / (windowVals.length - 1));
+        }
+      }
+    }
+
+    return new Series<number>('rollingStd', Float64Column.from(results));
+  }
+}
+
+// ── rollingMin(n): n-row moving minimum ──
+
+export class RollingMinExpr extends RollingExpr {
+  toString(): string {
+    return `rollingMin(${this._source.toString()}, ${this._windowSize})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const values = this._getNumericValues(df);
+    const len = values.length;
+    const results = new Array<number | null>(len);
+
+    for (let i = 0; i < len; i++) {
+      if (i < this._windowSize - 1) {
+        results[i] = null;
+      } else {
+        let min: number | null = null;
+        for (let j = i - this._windowSize + 1; j <= i; j++) {
+          const v = values[j]!;
+          if (v !== null) {
+            min = min === null ? v : Math.min(min, v);
+          }
+        }
+        results[i] = min;
+      }
+    }
+
+    return new Series<number>('rollingMin', Float64Column.from(results));
+  }
+}
+
+// ── rollingMax(n): n-row moving maximum ──
+
+export class RollingMaxExpr extends RollingExpr {
+  toString(): string {
+    return `rollingMax(${this._source.toString()}, ${this._windowSize})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const values = this._getNumericValues(df);
+    const len = values.length;
+    const results = new Array<number | null>(len);
+
+    for (let i = 0; i < len; i++) {
+      if (i < this._windowSize - 1) {
+        results[i] = null;
+      } else {
+        let max: number | null = null;
+        for (let j = i - this._windowSize + 1; j <= i; j++) {
+          const v = values[j]!;
+          if (v !== null) {
+            max = max === null ? v : Math.max(max, v);
+          }
+        }
+        results[i] = max;
+      }
+    }
+
+    return new Series<number>('rollingMax', Float64Column.from(results));
+  }
+}
+
+// ── ewm(alpha): exponential weighted moving average ──
+
+export class EwmExpr extends Expr<number> {
+  private readonly _source: Expr<unknown>;
+  private readonly _alpha: number;
+
+  constructor(source: Expr<unknown>, alpha: number) {
+    super();
+    this._source = source;
+    this._alpha = alpha;
+  }
+
+  get dependencies(): string[] {
+    return this._source.dependencies;
+  }
+
+  toString(): string {
+    return `ewm(${this._source.toString()}, ${this._alpha})`;
+  }
+
+  evaluate(df: DataFrame): Series<number> {
+    const series = this._source.evaluate(df);
+    const len = series.length;
+    const results = new Array<number | null>(len);
+    let ewma: number | null = null;
+
+    for (let i = 0; i < len; i++) {
+      const v = series.get(i);
+      if (v !== null && typeof v === 'number') {
+        if (ewma === null) {
+          ewma = v;
+        } else {
+          ewma = this._alpha * v + (1 - this._alpha) * ewma;
+        }
+        results[i] = ewma;
+      } else {
+        results[i] = ewma;
+      }
+    }
+
+    return new Series<number>('ewm', Float64Column.from(results));
+  }
+}
+
 // ── Module augmentation: add methods to Expr ──
 
 declare module '../expr/expr' {
@@ -464,6 +703,12 @@ declare module '../expr/expr' {
     shift(offset: number): Expr<number>;
     diff(offset?: number): Expr<number>;
     pctChange(offset?: number): Expr<number>;
+    rollingMean(windowSize: number): Expr<number>;
+    rollingSum(windowSize: number): Expr<number>;
+    rollingStd(windowSize: number): Expr<number>;
+    rollingMin(windowSize: number): Expr<number>;
+    rollingMax(windowSize: number): Expr<number>;
+    ewm(alpha: number): Expr<number>;
   }
 }
 
@@ -517,4 +762,28 @@ Expr.prototype.diff = function (this: Expr<unknown>, offset = 1): Expr<number> {
 
 Expr.prototype.pctChange = function (this: Expr<unknown>, offset = 1): Expr<number> {
   return new PctChangeExpr(this, offset);
+};
+
+Expr.prototype.rollingMean = function (this: Expr<unknown>, windowSize: number): Expr<number> {
+  return new RollingMeanExpr(this, windowSize);
+};
+
+Expr.prototype.rollingSum = function (this: Expr<unknown>, windowSize: number): Expr<number> {
+  return new RollingSumExpr(this, windowSize);
+};
+
+Expr.prototype.rollingStd = function (this: Expr<unknown>, windowSize: number): Expr<number> {
+  return new RollingStdExpr(this, windowSize);
+};
+
+Expr.prototype.rollingMin = function (this: Expr<unknown>, windowSize: number): Expr<number> {
+  return new RollingMinExpr(this, windowSize);
+};
+
+Expr.prototype.rollingMax = function (this: Expr<unknown>, windowSize: number): Expr<number> {
+  return new RollingMaxExpr(this, windowSize);
+};
+
+Expr.prototype.ewm = function (this: Expr<unknown>, alpha: number): Expr<number> {
+  return new EwmExpr(this, alpha);
 };
