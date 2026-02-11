@@ -57,6 +57,10 @@ export class ObjectColumn extends Column<unknown> {
     return this._takeByIndices(idxArray);
   }
 
+  estimatedMemoryBytes(): number {
+    return this._length * 8 + this._nullMask.byteLength;
+  }
+
   static from(values: unknown[]): ObjectColumn {
     const data: unknown[] = new Array<unknown>(values.length);
     const mask = new BitArray(values.length);

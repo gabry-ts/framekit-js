@@ -164,6 +164,18 @@ class ListColumn extends Column<string[]> {
     return this._takeByIndices(idxArray);
   }
 
+  estimatedMemoryBytes(): number {
+    let bytes = this._nullMask.byteLength;
+    for (let i = 0; i < this._length; i++) {
+      if (this._nullMask.get(i)) {
+        for (const s of this._data[i]!) {
+          bytes += s.length * 2;
+        }
+      }
+    }
+    return bytes;
+  }
+
   private _takeByIndices(indices: number[]): ListColumn {
     const data: string[][] = [];
     const mask = new BitArray(indices.length);

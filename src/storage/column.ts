@@ -43,4 +43,5 @@ export abstract class Column<T> {
   abstract clone(): Column<T>;
   abstract filter(mask: Column<boolean>): Column<T>;
   abstract take(indices: Int32Array): Column<T>;
+  abstract estimatedMemoryBytes(): number;
 }

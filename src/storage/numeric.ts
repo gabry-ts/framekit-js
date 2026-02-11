@@ -99,6 +99,10 @@ export class Float64Column extends Column<number> {
     return result;
   }
 
+  estimatedMemoryBytes(): number {
+    return this._length * 8 + this._nullMask.byteLength;
+  }
+
   static from(values: (number | null)[]): Float64Column {
     const data = new Float64Array(values.length);
     const mask = new BitArray(values.length);
@@ -228,6 +232,10 @@ export class Int32Column extends Column<number> {
       }
     }
     return result;
+  }
+
+  estimatedMemoryBytes(): number {
+    return this._length * 4 + this._nullMask.byteLength;
   }
 
   static from(values: (number | null)[]): Int32Column {

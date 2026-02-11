@@ -757,6 +757,14 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return DataFrame.fromColumns(resultColumns);
   }
 
+  memoryUsage(): number {
+    let total = 0;
+    for (const name of this._columnOrder) {
+      total += this._columns.get(name)!.estimatedMemoryBytes();
+    }
+    return total;
+  }
+
   info(): void {
     const [nRows, nCols] = this.shape;
     const lines: string[] = [];
@@ -775,7 +783,7 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
       const colObj = this._columns.get(name)!;
       const dtype = colObj.dtype;
       const nullCount = colObj.nullCount;
-      const mem = this._estimateColumnMemory(colObj);
+      const mem = colObj.estimatedMemoryBytes();
       totalMemory += mem;
       lines.push(
         `${name.padEnd(colNameWidth)}  ${dtype.padEnd(10)}  ${String(nullCount).padEnd(10)}  ${formatBytes(mem)}`,
@@ -786,32 +794,6 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     lines.push(`Total memory: ${formatBytes(totalMemory)}`);
 
     console.log(lines.join('\n'));
-  }
-
-  private _estimateColumnMemory(col: Column<unknown>): number {
-    const dtype = col.dtype;
-    switch (dtype) {
-      case DType.Float64:
-      case DType.Date:
-        return col.length * 8; // 8 bytes per float64
-      case DType.Int32:
-        return col.length * 4; // 4 bytes per int32
-      case DType.Boolean:
-        return col.length; // 1 byte per bool (Uint8Array)
-      case DType.Utf8: {
-        // Estimate: iterate and sum string lengths
-        let bytes = 0;
-        for (let i = 0; i < col.length; i++) {
-          const v = col.get(i);
-          if (v !== null && typeof v === 'string') {
-            bytes += v.length * 2; // JS strings are ~2 bytes per char
-          }
-        }
-        return bytes;
-      }
-      default:
-        return col.length * 8; // fallback estimate
-    }
   }
 
   static fromColumns<S extends Record<string, unknown> = Record<string, unknown>>(

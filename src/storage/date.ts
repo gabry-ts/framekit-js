@@ -57,6 +57,10 @@ export class DateColumn extends Column<Date> {
     return this._takeByIndices(idxArray);
   }
 
+  estimatedMemoryBytes(): number {
+    return this._length * 8 + this._nullMask.byteLength;
+  }
+
   static from(values: (Date | null)[]): DateColumn {
     const data = new Float64Array(values.length);
     const mask = new BitArray(values.length);

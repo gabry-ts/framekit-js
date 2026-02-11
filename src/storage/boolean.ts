@@ -57,6 +57,10 @@ export class BooleanColumn extends Column<boolean> {
     return this._takeByIndices(idxArray);
   }
 
+  estimatedMemoryBytes(): number {
+    return this._length + this._nullMask.byteLength;
+  }
+
   static from(values: (boolean | null)[]): BooleanColumn {
     const data = new Uint8Array(values.length);
     const mask = new BitArray(values.length);

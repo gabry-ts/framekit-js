@@ -23,6 +23,10 @@ export class BitArray {
     return this._length;
   }
 
+  get byteLength(): number {
+    return this._buffer.byteLength;
+  }
+
   get(index: number): boolean {
     this._boundsCheck(index);
     const byteIndex = index >> 3;

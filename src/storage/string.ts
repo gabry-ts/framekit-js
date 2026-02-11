@@ -95,6 +95,24 @@ export class Utf8Column extends Column<string> {
     return this._takeByIndices(idxArray);
   }
 
+  estimatedMemoryBytes(): number {
+    let bytes = this._nullMask.byteLength;
+    if (this._interned) {
+      // Dictionary + Uint32Array indices
+      for (const s of this._interned.dictionary) {
+        bytes += s.length * 2;
+      }
+      bytes += this._interned.indices.byteLength;
+    } else {
+      for (let i = 0; i < this._length; i++) {
+        if (this._nullMask.get(i)) {
+          bytes += this._data![i]!.length * 2;
+        }
+      }
+    }
+    return bytes;
+  }
+
   static from(values: (string | null)[]): Utf8Column {
     const len = values.length;
     const data: string[] = new Array<string>(len);
