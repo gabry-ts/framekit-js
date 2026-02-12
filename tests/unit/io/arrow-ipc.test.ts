@@ -13,7 +13,7 @@ beforeAll(async () => {
   }
 });
 
-describe('Arrow IPC serialization (US-073)', () => {
+describe('Arrow IPC serialization (US-073, US-078)', () => {
   describe('toArrowIPC', () => {
     it('should return a Uint8Array buffer', async () => {
       if (!arrowAvailable) return;
@@ -127,6 +127,50 @@ describe('Arrow IPC serialization (US-073)', () => {
       for (const colName of original.columns) {
         expect(restored.col(colName).toArray()).toEqual(original.col(colName).toArray());
       }
+    });
+
+    it('should round-trip boolean data through Arrow IPC', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromColumns({ flag: [true, false, true] });
+
+      const buffer = await original.toArrowIPC();
+      const restored = await DataFrame.fromArrowIPC(buffer);
+
+      expect(restored.col('flag').toArray()).toEqual([true, false, true]);
+    });
+
+    it('should round-trip all data types together through IPC', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromRows([
+        { id: 1, name: 'alice', active: true, score: 9.5 },
+        { id: 2, name: 'bob', active: false, score: 7.2 },
+      ]);
+
+      const buffer = await original.toArrowIPC();
+      const restored = await DataFrame.fromArrowIPC(buffer);
+
+      expect(restored.shape).toEqual(original.shape);
+      expect(restored.columns).toEqual(original.columns);
+      for (const colName of original.columns) {
+        expect(restored.col(colName).toArray()).toEqual(original.col(colName).toArray());
+      }
+    });
+
+    it('should round-trip multiple columns with nulls through IPC', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromColumns({
+        a: [1, null, 3],
+        b: ['x', 'y', null],
+      });
+
+      const buffer = await original.toArrowIPC();
+      const restored = await DataFrame.fromArrowIPC(buffer);
+
+      expect(restored.col('a').toArray()).toEqual([1, null, 3]);
+      expect(restored.col('b').toArray()).toEqual(['x', 'y', null]);
     });
   });
 });

@@ -16,7 +16,7 @@ beforeAll(async () => {
   }
 });
 
-describe('Arrow interop (US-072)', () => {
+describe('Arrow interop (US-072, US-078)', () => {
   describe('toArrow', () => {
     it('should convert a DataFrame with numeric columns to Arrow Table', async () => {
       if (!arrowAvailable) return;
@@ -141,6 +141,108 @@ describe('Arrow interop (US-072)', () => {
       const restored = DataFrame.fromArrow(table);
 
       expect(restored.col('name').toArray()).toEqual(['alice', 'bob']);
+    });
+
+    it('should round-trip boolean data through Arrow', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromColumns({ flag: [true, false, true] });
+
+      const table = await original.toArrow();
+      const restored = DataFrame.fromArrow(table);
+
+      expect(restored.shape).toEqual(original.shape);
+      expect(restored.col('flag').toArray()).toEqual([true, false, true]);
+    });
+
+    it('should round-trip all data types together', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromRows([
+        { id: 1, name: 'alice', active: true, score: 9.5 },
+        { id: 2, name: 'bob', active: false, score: 7.2 },
+        { id: 3, name: 'charlie', active: true, score: 8.8 },
+      ]);
+
+      const table = await original.toArrow();
+      const restored = DataFrame.fromArrow(table);
+
+      expect(restored.shape).toEqual(original.shape);
+      expect(restored.columns).toEqual(original.columns);
+      for (const colName of original.columns) {
+        expect(restored.col(colName).toArray()).toEqual(original.col(colName).toArray());
+      }
+    });
+
+    it('should round-trip data with nulls through Arrow', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromColumns({ val: [1, null, 3] });
+
+      const table = await original.toArrow();
+      const restored = DataFrame.fromArrow(table);
+
+      expect(restored.col('val').toArray()).toEqual([1, null, 3]);
+    });
+  });
+
+  describe('toArrow schema validation', () => {
+    it('should produce Arrow Table with correct schema types', async () => {
+      if (!arrowAvailable) return;
+
+      const df = DataFrame.fromRows([
+        { num: 1.5, text: 'hello', flag: true },
+      ]);
+
+      const table = await df.toArrow();
+
+      expect(table.schema.fields.length).toBe(3);
+      const fieldNames = table.schema.fields.map((f: { name: string }) => f.name);
+      expect(fieldNames).toEqual(['num', 'text', 'flag']);
+      // Verify each field has a valid type
+      for (const field of table.schema.fields) {
+        expect(field.type).toBeDefined();
+      }
+    });
+  });
+
+  describe('null handling through Arrow conversion', () => {
+    it('should handle null values in string columns through toArrow', async () => {
+      if (!arrowAvailable) return;
+
+      const df = DataFrame.fromColumns({ name: ['alice', null, 'charlie'] });
+      const table = await df.toArrow();
+
+      const col = table.getChild('name');
+      expect(col.get(0)).toBe('alice');
+      expect(col.get(1)).toBeNull();
+      expect(col.get(2)).toBe('charlie');
+    });
+
+    it('should handle null values in fromArrow with nullable vectors', async () => {
+      if (!arrowAvailable) return;
+
+      // Create table with nulls via roundtrip
+      const df = DataFrame.fromColumns({ x: [10, null, 30] });
+      const table = await df.toArrow();
+      const restored = DataFrame.fromArrow(table);
+
+      expect(restored.col('x').toArray()).toEqual([10, null, 30]);
+    });
+
+    it('should handle multiple columns with nulls through Arrow roundtrip', async () => {
+      if (!arrowAvailable) return;
+
+      const original = DataFrame.fromColumns({
+        a: [1, null, 3],
+        b: ['x', 'y', null],
+      });
+
+      const table = await original.toArrow();
+      const restored = DataFrame.fromArrow(table);
+
+      expect(restored.col('a').toArray()).toEqual([1, null, 3]);
+      expect(restored.col('b').toArray()).toEqual(['x', 'y', null]);
     });
   });
 });
