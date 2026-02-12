@@ -1,5 +1,5 @@
 import { DType } from './types/dtype';
-import type { CSVReadOptions, CSVWriteOptions, JSONReadOptions, JSONWriteOptions, PrintOptions, SampleOptions, ExcelReadOptions, ExcelWriteOptions, ParquetReadOptions, ParquetWriteOptions } from './types/options';
+import type { CSVReadOptions, CSVWriteOptions, JSONReadOptions, JSONWriteOptions, PrintOptions, SampleOptions, ExcelReadOptions, ExcelWriteOptions, ParquetReadOptions, ParquetWriteOptions, SQLWriteOptions } from './types/options';
 import { ColumnNotFoundError, ErrorCode, FrameKitError, IOError, ShapeMismatchError } from './errors';
 import { Column } from './storage/column';
 import { Float64Column, Int32Column } from './storage/numeric';
@@ -32,6 +32,7 @@ import { melt } from './ops/melt';
 import type { MeltOptions } from './ops/melt';
 import { transpose, concat } from './ops/reshape';
 import { union, intersection, difference } from './ops/setops';
+import { writeSQL } from './io/sql/writer';
 import type { LazyFrame } from './lazy';
 import { createLazyFrame } from './lazy';
 
@@ -1269,6 +1270,11 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     }
 
     return ndjsonString;
+  }
+
+  toSQL(tableName: string, options?: SQLWriteOptions): string {
+    const { header, rows } = this._extractRows();
+    return writeSQL(tableName, header, rows, options);
   }
 
   private _extractRows(): { header: string[]; rows: unknown[][] } {

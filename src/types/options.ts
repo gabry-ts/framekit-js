@@ -67,3 +67,7 @@ export interface ExcelWriteOptions {
   columnWidths?: Record<string, number> | undefined;
   startCell?: string | undefined;
 }
+
+export interface SQLWriteOptions {
+  batchSize?: number | undefined;
+}

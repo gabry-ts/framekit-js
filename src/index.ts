@@ -13,6 +13,7 @@ export type {
   ExcelWriteOptions,
   ParquetReadOptions,
   ParquetWriteOptions,
+  SQLWriteOptions,
 } from './types/options';
 export {
   ErrorCode,
