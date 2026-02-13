@@ -18,6 +18,9 @@
       }
     }
   },
+  "bin": {
+    "framekit": "./dist/cli.js"
+  },
   "files": [
     "dist"
   ],
