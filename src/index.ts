@@ -97,6 +97,7 @@ export {
   PartitionedWindowExpr,
   OrderedWindowExpr,
 } from './ops/window';
+export { executeQuery } from './ops/query';
 import './expr/expr-accessors';
 import './ops/window';
 

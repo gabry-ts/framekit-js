@@ -35,6 +35,7 @@ import { union, intersection, difference } from './ops/setops';
 import { writeSQL } from './io/sql/writer';
 import type { LazyFrame } from './lazy';
 import { createLazyFrame } from './lazy';
+import { executeQuery } from './ops/query';
 
 export class DataFrame<S extends Record<string, unknown> = Record<string, unknown>> {
   private readonly _columns: Map<string, Column<unknown>>;
@@ -1355,6 +1356,10 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
 
   difference(other: DataFrame<Record<string, unknown>>): DataFrame<Record<string, unknown>> {
     return difference(this, other);
+  }
+
+  query(queryStr: string): DataFrame<Record<string, unknown>> {
+    return executeQuery(this as DataFrame, queryStr);
   }
 }
 
