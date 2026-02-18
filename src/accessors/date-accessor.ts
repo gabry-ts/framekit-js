@@ -95,6 +95,30 @@ export class DateAccessor {
     return new Series<string>(this._series.name, Utf8Column.from(results));
   }
 
+  diff(other: Series<Date>, unit: TimeUnit): Series<number> {
+    if (other.dtype !== DType.Date) {
+      throw new TypeMismatchError(
+        `diff() requires a Date Series, got '${other.dtype}'`,
+      );
+    }
+    if (other.length !== this._series.length) {
+      throw new TypeMismatchError(
+        `diff() requires Series of equal length, got ${this._series.length} and ${other.length}`,
+      );
+    }
+    const results: (number | null)[] = [];
+    for (let i = 0; i < this._series.length; i++) {
+      const a = this._series.get(i);
+      const b = other.get(i);
+      if (a === null || b === null) {
+        results.push(null);
+      } else {
+        results.push(dateDiff(a, b, unit));
+      }
+    }
+    return new Series<number>(this._series.name, Float64Column.from(results));
+  }
+
   truncate(unit: TimeUnit): Series<Date> {
     const results: (Date | null)[] = [];
     for (let i = 0; i < this._series.length; i++) {
@@ -133,6 +157,35 @@ function formatDate(date: Date, pattern: string): string {
     .replace('HH', pad2(date.getHours()))
     .replace('mm', pad2(date.getMinutes()))
     .replace('ss', pad2(date.getSeconds()));
+}
+
+function dateDiff(a: Date, b: Date, unit: TimeUnit): number {
+  const msA = a.getTime();
+  const msB = b.getTime();
+  const diffMs = msB - msA;
+
+  switch (unit) {
+    case 'second':
+      return diffMs / 1000;
+    case 'minute':
+      return diffMs / (1000 * 60);
+    case 'hour':
+      return diffMs / (1000 * 60 * 60);
+    case 'day':
+      return diffMs / (1000 * 60 * 60 * 24);
+    case 'month': {
+      const yearDiff = b.getFullYear() - a.getFullYear();
+      const monthDiff = b.getMonth() - a.getMonth();
+      const dayFrac = (b.getDate() - a.getDate()) / 30;
+      return yearDiff * 12 + monthDiff + dayFrac;
+    }
+    case 'year': {
+      const yearDiff = b.getFullYear() - a.getFullYear();
+      const monthFrac = (b.getMonth() - a.getMonth()) / 12;
+      const dayFrac = (b.getDate() - a.getDate()) / 365;
+      return yearDiff + monthFrac + dayFrac;
+    }
+  }
 }
 
 function truncateDate(date: Date, unit: TimeUnit): Date {

@@ -236,6 +236,71 @@ describe('DateAccessor', () => {
     });
   });
 
+  describe('diff()', () => {
+    const a = dateSeries('a', [
+      new Date(2024, 0, 1),  // Jan 1
+      new Date(2024, 0, 1),
+      new Date(2024, 6, 1),  // Jul 1
+    ]);
+    const b = dateSeries('b', [
+      new Date(2024, 0, 11), // Jan 11
+      new Date(2025, 0, 1),  // 1 year later
+      new Date(2024, 0, 1),  // earlier than a → negative
+    ]);
+
+    it('diff in days', () => {
+      const result = a.dt.diff(b, 'day');
+      expect(result.get(0)).toBe(10);
+      expect(result.get(2)).toBeCloseTo(-182, 0);
+    });
+
+    it('diff in hours', () => {
+      const result = a.dt.diff(b, 'hour');
+      expect(result.get(0)).toBe(240); // 10 days * 24
+    });
+
+    it('diff in minutes', () => {
+      const result = a.dt.diff(b, 'minute');
+      expect(result.get(0)).toBe(14400); // 10 days * 24 * 60
+    });
+
+    it('diff in seconds', () => {
+      const result = a.dt.diff(b, 'second');
+      expect(result.get(0)).toBe(864000); // 10 days * 86400
+    });
+
+    it('diff in months', () => {
+      const result = a.dt.diff(b, 'month');
+      expect(result.get(1)).toBeCloseTo(12, 0); // ~12 months
+    });
+
+    it('diff in years', () => {
+      const result = a.dt.diff(b, 'year');
+      expect(result.get(1)).toBeCloseTo(1, 0); // ~1 year
+    });
+
+    it('negative differences when first date is after second', () => {
+      const result = a.dt.diff(b, 'day');
+      expect(result.get(2)!).toBeLessThan(0);
+    });
+
+    it('null in either series produces null result', () => {
+      const withNullA = dateSeries('a', [new Date(2024, 0, 1), null, new Date(2024, 0, 1)]);
+      const withNullB = dateSeries('b', [null, new Date(2024, 0, 2), new Date(2024, 0, 2)]);
+      const result = withNullA.dt.diff(withNullB, 'day');
+      expect(result.get(0)).toBeNull();
+      expect(result.get(1)).toBeNull();
+      expect(result.get(2)).toBe(1);
+    });
+
+    it('throws on non-Date series', () => {
+      const numSeries = new Series<number>('n', Float64Column.from([1, 2, 3]));
+      expect(() => a.dt.diff(numSeries as unknown as Series<Date>, 'day')).toThrow(
+        TypeMismatchError,
+      );
+    });
+  });
+
   describe('Series .dt getter', () => {
     it('returns DateAccessor instance', () => {
       const accessor = s.dt;
