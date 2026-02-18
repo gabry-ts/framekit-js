@@ -17,6 +17,16 @@
         "default": "./dist/index.cjs"
       }
     },
+    "./compat": {
+      "import": {
+        "types": "./dist/compat/index.d.ts",
+        "default": "./dist/compat/index.js"
+      },
+      "require": {
+        "types": "./dist/compat/index.d.cts",
+        "default": "./dist/compat/index.cjs"
+      }
+    },
     "./browser": {
       "import": {
         "types": "./dist/browser.d.ts",
