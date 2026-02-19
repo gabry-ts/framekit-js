@@ -2,6 +2,19 @@
  * Compat helper functions — column selectors, sort helpers, and aggregation operators.
  */
 
+import type { DescSpec } from './types';
+
+/**
+ * Create a descending sort specification for use with orderby.
+ *
+ * ```ts
+ * orderby(df, [desc('price'), 'name'])
+ * ```
+ */
+export function desc(column: string): DescSpec {
+  return { kind: 'desc', column };
+}
+
 /**
  * Aggregation operator helpers for use in rollup expressions.
  *

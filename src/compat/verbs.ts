@@ -4,7 +4,7 @@
 
 import { DataFrame } from '../dataframe';
 import { GroupBy } from '../ops/groupby';
-import type { ExprRecord, AggExprRecord } from './types';
+import type { ExprRecord, AggExprRecord, SortSpec } from './types';
 
 /**
  * Arquero-style derive: create new columns from row-level expressions.
@@ -140,4 +140,67 @@ function rollupGrouped(grouped: GroupBy, exprs: AggExprRecord): DataFrame {
   }
 
   return DataFrame.fromColumns(resultColumns);
+}
+
+/**
+ * Arquero-style fold: unpivot specified columns into key/value pairs.
+ *
+ * ```ts
+ * fold(df, ['x', 'y'])
+ * // → key | value rows for each original row × folded column
+ *
+ * fold(df, ['x', 'y'], { as: ['variable', 'measurement'] })
+ * ```
+ *
+ * Maps to DataFrame.melt() under the hood. Non-folded columns are treated
+ * as id variables and are repeated for each folded column.
+ */
+export function fold(
+  df: DataFrame,
+  columns: string[],
+  options?: { as?: [string, string] },
+): DataFrame {
+  const varName = options?.as?.[0] ?? 'key';
+  const valueName = options?.as?.[1] ?? 'value';
+
+  // id vars are all columns not being folded
+  const foldSet = new Set(columns);
+  const idVars = df.columns.filter((c) => !foldSet.has(c));
+
+  return df.melt({
+    idVars,
+    valueVars: columns,
+    varName,
+    valueName,
+  });
+}
+
+/**
+ * Arquero-style orderby: sort a DataFrame by one or more columns.
+ *
+ * ```ts
+ * import { desc } from 'framekit/compat';
+ *
+ * orderby(df, ['name'])                    // ascending by name
+ * orderby(df, [desc('price'), 'name'])     // desc price, then asc name
+ * orderby(df, ['age'])                     // single column ascending
+ * ```
+ *
+ * Plain strings sort ascending. Use `desc('column')` for descending order.
+ */
+export function orderby(df: DataFrame, specs: SortSpec[]): DataFrame {
+  const columns: string[] = [];
+  const orders: ('asc' | 'desc')[] = [];
+
+  for (const spec of specs) {
+    if (typeof spec === 'string') {
+      columns.push(spec);
+      orders.push('asc');
+    } else {
+      columns.push(spec.column);
+      orders.push('desc');
+    }
+  }
+
+  return df.sortBy(columns, orders);
 }
