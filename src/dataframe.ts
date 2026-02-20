@@ -228,6 +228,26 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame<Result>(newColumns, newOrder);
   }
 
+  assign(other: DataFrame): DataFrame {
+    if (other.length !== this.length && other.columns.length > 0 && this._columnOrder.length > 0) {
+      throw new ShapeMismatchError(
+        `Cannot assign DataFrame with ${other.length} rows to DataFrame with ${this.length} rows`,
+      );
+    }
+
+    const newColumns = new Map<string, Column<unknown>>(this._columns);
+    const newOrder = [...this._columnOrder];
+
+    for (const name of other.columns) {
+      newColumns.set(name, other._columns.get(name)!);
+      if (!this._columnOrder.includes(name)) {
+        newOrder.push(name);
+      }
+    }
+
+    return new DataFrame(newColumns, newOrder);
+  }
+
   rename(mapping: Record<string, string>): DataFrame<S> {
     // Validate that all source columns exist
     for (const oldName of Object.keys(mapping)) {
