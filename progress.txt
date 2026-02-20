@@ -1,0 +1,18 @@
+## Codebase Patterns
+- Compat layer lives in `src/compat/` with helpers.ts (selectors, op), types.ts, and verbs.ts
+- Use `DataFrame.fromColumns({})` for test fixtures
+- Error types are in `src/errors.ts` — use `FrameKitError` with `ErrorCode` enum for general errors
+- Tests use vitest with `describe/it/expect` pattern in `tests/unit/compat/`
+- `desc()` helper already existed; `all()`, `not()`, `range()` added alongside it in helpers.ts
+- `resolveSelector()` in helpers.ts resolves ColumnSelector against column name arrays
+---
+
+## 2026-02-26 - US-005
+- What was implemented: all(), not(), range() column selector helpers + resolveSelector() utility
+- Files changed: src/compat/helpers.ts, tests/unit/compat/selectors.test.ts (new)
+- **Learnings for future iterations:**
+  - The compat types (AllSelector, NotSelector, RangeSelector, DescSpec, ColumnSelector) were already defined in types.ts
+  - desc() was already implemented; only all/not/range needed to be added
+  - resolveSelector takes a string[] of column names (not a DataFrame) for flexibility
+  - range() handles reversed start/end by using Math.min/max on indices
+---
