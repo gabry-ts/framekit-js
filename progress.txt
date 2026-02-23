@@ -5,6 +5,8 @@
 - Tests use vitest with `describe/it/expect` pattern in `tests/unit/compat/`
 - `desc()` helper already existed; `all()`, `not()`, `range()` added alongside it in helpers.ts
 - `resolveSelector()` in helpers.ts resolves ColumnSelector against column name arrays
+- New DataFrame methods: add to src/dataframe.ts, tests in tests/unit/dataframe-*.test.ts
+- DataFrame internal: _columns (Map<string, Column>), _columnOrder (string[]); constructor calls addRef() on columns
 ---
 
 ## 2026-02-26 - US-005
@@ -15,4 +17,14 @@
   - desc() was already implemented; only all/not/range needed to be added
   - resolveSelector takes a string[] of column names (not a DataFrame) for flexibility
   - range() handles reversed start/end by using Math.min/max on indices
+---
+
+## 2026-02-26 - US-006
+- What was implemented: DataFrame.assign(otherDf) method that merges columns from another DataFrame
+- Files changed: src/dataframe.ts, tests/unit/dataframe-assign.test.ts (new)
+- **Learnings for future iterations:**
+  - DataFrame constructor takes Map<string, Column<unknown>> and string[] columnOrder — access via _columns and _columnOrder
+  - Column references use addRef() in constructor (CoW semantics) — sharing columns between DataFrames via assign is safe
+  - Empty DataFrames (DataFrame.empty()) have 0 columns and 0 length — handle in shape checks
+  - ShapeMismatchError is the right error for row count mismatches between DataFrames
 ---
