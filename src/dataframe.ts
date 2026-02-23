@@ -248,6 +248,43 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     return new DataFrame(newColumns, newOrder);
   }
 
+  relocate(columns: string[], options: { before?: string; after?: string }): DataFrame {
+    const { before, after } = options;
+
+    if (before !== undefined && after !== undefined) {
+      throw new FrameKitError(ErrorCode.INVALID_OPERATION, 'Cannot specify both "before" and "after" in relocate');
+    }
+    if (before === undefined && after === undefined) {
+      throw new FrameKitError(ErrorCode.INVALID_OPERATION, 'Must specify either "before" or "after" in relocate');
+    }
+
+    // Validate source columns exist
+    for (const col of columns) {
+      if (!this._columns.has(col)) {
+        throw new ColumnNotFoundError(col, this._columnOrder);
+      }
+    }
+
+    // Validate anchor column exists
+    const anchor = (before ?? after)!;
+    if (!this._columns.has(anchor)) {
+      throw new ColumnNotFoundError(anchor, this._columnOrder);
+    }
+
+    // Build new order: remove source columns, then insert at anchor position
+    const remaining = this._columnOrder.filter(c => !columns.includes(c));
+    const anchorIdx = remaining.indexOf(anchor);
+    const insertIdx = before !== undefined ? anchorIdx : anchorIdx + 1;
+
+    const newOrder = [
+      ...remaining.slice(0, insertIdx),
+      ...columns,
+      ...remaining.slice(insertIdx),
+    ];
+
+    return new DataFrame(new Map(this._columns), newOrder);
+  }
+
   rename(mapping: Record<string, string>): DataFrame<S> {
     // Validate that all source columns exist
     for (const oldName of Object.keys(mapping)) {
