@@ -7,6 +7,7 @@
 - `resolveSelector()` in helpers.ts resolves ColumnSelector against column name arrays
 - New DataFrame methods: add to src/dataframe.ts, tests in tests/unit/dataframe-*.test.ts
 - DataFrame internal: _columns (Map<string, Column>), _columnOrder (string[]); constructor calls addRef() on columns
+- `reify()` delegates to `clone()` — both create deep copies of all columns via each Column's clone() method
 ---
 
 ## 2026-02-26 - US-005
@@ -37,4 +38,14 @@
   - new DataFrame(new Map(this._columns), newOrder) reuses column references safely (CoW)
   - FrameKitError with ErrorCode.INVALID_OPERATION is used for logical errors (both before+after, neither before nor after)
   - ColumnNotFoundError for missing source or anchor columns
+---
+
+## 2026-02-26 - US-008
+- What was implemented: DataFrame.reify() method that creates a deep, independent copy of a DataFrame
+- Files changed: src/dataframe.ts, tests/unit/storage/cow-reify.test.ts (new)
+- **Learnings for future iterations:**
+  - DataFrame already has clone() which deep-copies all columns; reify() delegates to it
+  - Each Column subclass implements clone() with type-specific deep copy (TypedArray copy, array spread, etc.)
+  - BitArray null masks are also deep-copied via clone()
+  - Tests cover: value equality, isolation (both directions), empty DF, after select/head (shared refs), null preservation
 ---
