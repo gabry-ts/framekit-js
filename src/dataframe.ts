@@ -29,6 +29,8 @@ import type { JoinType, JoinOnMapping, JoinOptions } from './ops/join';
 import { lookup as lookupImpl } from './ops/lookup';
 import { spread as spreadImpl } from './ops/spread';
 import type { SpreadOptions } from './ops/spread';
+import { unroll as unrollImpl } from './ops/unroll';
+import type { UnrollOptions } from './ops/unroll';
 import { pivot } from './ops/pivot';
 import type { PivotOptions } from './ops/pivot';
 import { melt } from './ops/melt';
@@ -261,6 +263,10 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
 
   spread(column: string, options?: SpreadOptions): DataFrame {
     return spreadImpl(this, column, options);
+  }
+
+  unroll(columns: string | string[], options?: UnrollOptions): DataFrame {
+    return unrollImpl(this, columns, options);
   }
 
   relocate(columns: string[], options: { before?: string; after?: string }): DataFrame {
