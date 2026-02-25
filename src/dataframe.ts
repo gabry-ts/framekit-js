@@ -27,6 +27,8 @@ import { GroupBy } from './ops/groupby';
 import { hashJoin } from './ops/join';
 import type { JoinType, JoinOnMapping, JoinOptions } from './ops/join';
 import { lookup as lookupImpl } from './ops/lookup';
+import { spread as spreadImpl } from './ops/spread';
+import type { SpreadOptions } from './ops/spread';
 import { pivot } from './ops/pivot';
 import type { PivotOptions } from './ops/pivot';
 import { melt } from './ops/melt';
@@ -255,6 +257,10 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
 
   lookup(other: DataFrame, on: string, values?: string[]): DataFrame {
     return lookupImpl(this, other, on, values);
+  }
+
+  spread(column: string, options?: SpreadOptions): DataFrame {
+    return spreadImpl(this, column, options);
   }
 
   relocate(columns: string[], options: { before?: string; after?: string }): DataFrame {
