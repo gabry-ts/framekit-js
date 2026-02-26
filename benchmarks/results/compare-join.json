@@ -1,0 +1,11 @@
+{
+  "benchmark": "Join",
+  "framekit": {
+    "name": "framekit-join",
+    "samplesMs": [
+      6.497042
+    ],
+    "medianMs": 6.497042,
+    "p95Ms": 6.497042
+  }
+}

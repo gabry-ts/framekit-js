@@ -1,0 +1,11 @@
+{
+  "benchmark": "Window",
+  "framekit": {
+    "name": "framekit-window",
+    "samplesMs": [
+      6.837375
+    ],
+    "medianMs": 6.837375,
+    "p95Ms": 6.837375
+  }
+}

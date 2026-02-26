@@ -1,0 +1,11 @@
+{
+  "benchmark": "GroupBy",
+  "framekit": {
+    "name": "framekit-groupby",
+    "samplesMs": [
+      16.778583
+    ],
+    "medianMs": 16.778583,
+    "p95Ms": 16.778583
+  }
+}

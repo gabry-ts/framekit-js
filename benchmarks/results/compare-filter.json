@@ -1,0 +1,11 @@
+{
+  "benchmark": "Filter",
+  "framekit": {
+    "name": "framekit-filter",
+    "samplesMs": [
+      8.720917
+    ],
+    "medianMs": 8.720917,
+    "p95Ms": 8.720917
+  }
+}

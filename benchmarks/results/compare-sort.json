@@ -1,0 +1,11 @@
+{
+  "benchmark": "Sort",
+  "framekit": {
+    "name": "framekit-sort",
+    "samplesMs": [
+      10.381042
+    ],
+    "medianMs": 10.381042,
+    "p95Ms": 10.381042
+  }
+}
