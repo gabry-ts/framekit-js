@@ -131,7 +131,32 @@ Wiki pages are sourced from `wiki/` and can be synced through `.github/workflows
 - CI includes smoke and nightly benchmark workflows.
 - Regression checks are available in the benchmark harness.
 
-Benchmark outputs are directional and environment-sensitive; validate on your own hardware before drawing hard conclusions.
+### Latest Benchmark Snapshot
+
+Current checked-in snapshot (`BENCH_ROWS=50000`, `BENCH_ITERS=10`, `BENCH_WARMUP=3`):
+
+| Operation | Median (ms) | p95 (ms) | Source                                    |
+| --------- | ----------: | -------: | ----------------------------------------- |
+| Filter    |     14.0510 |  57.5378 | `benchmarks/results/compare-filter.json`  |
+| Sort      |     40.1102 |  48.6977 | `benchmarks/results/compare-sort.json`    |
+| GroupBy   |     13.5805 |  17.2832 | `benchmarks/results/compare-groupby.json` |
+| Join      |     43.2021 |  52.3730 | `benchmarks/results/compare-join.json`    |
+| Reshape   |     20.1917 |  48.8045 | `benchmarks/results/compare-reshape.json` |
+| Window    |     28.1787 |  52.4062 | `benchmarks/results/compare-window.json`  |
+
+### Run Benchmarks Locally
+
+```bash
+# Fast smoke check
+npm run bench:smoke
+
+# Full compare suite
+npm run bench:full
+```
+
+For human-readable benchmark reports, see `benchmarks/results/*.md`.
+
+Benchmark outputs are directional and environment-sensitive; validate on your own hardware and runtime before drawing hard conclusions.
 
 ## Project Standards
 

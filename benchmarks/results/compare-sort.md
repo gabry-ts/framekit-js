@@ -2,4 +2,4 @@
 
 | Engine | Median (ms) | p95 (ms) |
 |---|---:|---:|
-| FrameKit | 10.381 | 10.381 |
+| FrameKit | 40.110 | 48.698 |
