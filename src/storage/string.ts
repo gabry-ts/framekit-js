@@ -16,6 +16,7 @@ export class Utf8Column extends Column<string> {
   readonly dtype = DType.Utf8;
   private readonly _data: string[] | null;
   private readonly _interned: InternedStorage | null;
+  private readonly _allValid: boolean;
 
   constructor(data: string[], nullMask?: BitArray, interned?: InternedStorage) {
     super(data.length, nullMask);
@@ -26,6 +27,7 @@ export class Utf8Column extends Column<string> {
       this._data = data;
       this._interned = null;
     }
+    this._allValid = nullMask === undefined;
   }
 
   /** Whether this column uses interned (dictionary-encoded) storage. */
@@ -35,7 +37,13 @@ export class Utf8Column extends Column<string> {
 
   get(index: number): string | null {
     this._boundsCheck(index);
-    if (!this._nullMask.get(index)) {
+    if (this._allValid) {
+      if (this._interned) {
+        return this._interned.dictionary[this._interned.indices[index]!]!;
+      }
+      return this._data![index]!;
+    }
+    if (!this._nullMask.getUnsafe(index)) {
       return null;
     }
     if (this._interned) {
@@ -46,9 +54,19 @@ export class Utf8Column extends Column<string> {
 
   slice(start: number, end: number): Utf8Column {
     const len = end - start;
+    if (this._allValid) {
+      if (this._interned) {
+        const slicedIndices = this._interned.indices.slice(start, end);
+        return new Utf8Column(new Array<string>(len), undefined, {
+          dictionary: this._interned.dictionary,
+          indices: slicedIndices,
+        });
+      }
+      return new Utf8Column(this._data!.slice(start, end));
+    }
     const mask = new BitArray(len);
     for (let i = 0; i < len; i++) {
-      mask.set(i, this._nullMask.get(start + i));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(start + i));
     }
     if (this._interned) {
       const slicedIndices = this._interned.indices.slice(start, end);
@@ -62,6 +80,15 @@ export class Utf8Column extends Column<string> {
   }
 
   clone(): Utf8Column {
+    if (this._allValid) {
+      if (this._interned) {
+        return new Utf8Column(new Array<string>(this._length), undefined, {
+          dictionary: [...this._interned.dictionary],
+          indices: new Uint32Array(this._interned.indices),
+        });
+      }
+      return new Utf8Column([...this._data!]);
+    }
     if (this._interned) {
       return new Utf8Column(new Array<string>(this._length), this._nullMask.clone(), {
         dictionary: [...this._interned.dictionary],
@@ -88,11 +115,32 @@ export class Utf8Column extends Column<string> {
   }
 
   take(indices: Int32Array): Utf8Column {
-    const idxArray: number[] = [];
-    for (let i = 0; i < indices.length; i++) {
-      idxArray.push(indices[i]!);
+    const len = indices.length;
+    const mask = this._allValid ? undefined : new BitArray(len);
+    if (this._interned) {
+      const newIndices = new Uint32Array(len);
+      for (let i = 0; i < len; i++) {
+        const idx = indices[i]!;
+        newIndices[i] = this._interned.indices[idx]!;
+        if (mask) {
+          mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
+        }
+      }
+      return new Utf8Column(new Array<string>(len), mask, {
+        dictionary: this._interned.dictionary,
+        indices: newIndices,
+      });
     }
-    return this._takeByIndices(idxArray);
+
+    const data: string[] = new Array<string>(len);
+    for (let i = 0; i < len; i++) {
+      const idx = indices[i]!;
+      data[i] = this._data![idx]!;
+      if (mask) {
+        mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
+      }
+    }
+    return new Utf8Column(data, mask);
   }
 
   estimatedMemoryBytes(): number {
@@ -117,6 +165,7 @@ export class Utf8Column extends Column<string> {
     const len = values.length;
     const data: string[] = new Array<string>(len);
     const mask = new BitArray(len);
+    let hasNull = false;
     for (let i = 0; i < len; i++) {
       const v = values[i];
       if (v !== null && v !== undefined) {
@@ -124,6 +173,7 @@ export class Utf8Column extends Column<string> {
         mask.set(i, true);
       } else {
         data[i] = '';
+        hasNull = true;
       }
     }
 
@@ -132,7 +182,7 @@ export class Utf8Column extends Column<string> {
       const uniqueSet = new Set<string>();
       let nonNullCount = 0;
       for (let i = 0; i < len; i++) {
-        if (mask.get(i)) {
+        if (mask.getUnsafe(i)) {
           uniqueSet.add(data[i]!);
           nonNullCount++;
         }
@@ -145,15 +195,17 @@ export class Utf8Column extends Column<string> {
         }
         const indices = new Uint32Array(len);
         for (let i = 0; i < len; i++) {
-          if (mask.get(i)) {
+          if (mask.getUnsafe(i)) {
             indices[i] = dictMap.get(data[i]!)!;
           }
         }
-        return new Utf8Column(data, mask, { dictionary, indices });
+        return hasNull
+          ? new Utf8Column(data, mask, { dictionary, indices })
+          : new Utf8Column(data, undefined, { dictionary, indices });
       }
     }
 
-    return new Utf8Column(data, mask);
+    return hasNull ? new Utf8Column(data, mask) : new Utf8Column(data);
   }
 
   private _boundsCheck(index: number): void {
@@ -173,9 +225,8 @@ export class Utf8Column extends Column<string> {
       const newIndices = new Uint32Array(len);
       for (let i = 0; i < len; i++) {
         const idx = indices[i]!;
-        this._boundsCheck(idx);
         newIndices[i] = this._interned.indices[idx]!;
-        mask.set(i, this._nullMask.get(idx));
+        mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
       }
       return new Utf8Column(new Array<string>(len), mask, {
         dictionary: this._interned.dictionary,
@@ -186,9 +237,8 @@ export class Utf8Column extends Column<string> {
     const data: string[] = new Array<string>(len);
     for (let i = 0; i < len; i++) {
       const idx = indices[i]!;
-      this._boundsCheck(idx);
       data[i] = this._data![idx]!;
-      mask.set(i, this._nullMask.get(idx));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
     return new Utf8Column(data, mask);
   }

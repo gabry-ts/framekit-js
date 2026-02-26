@@ -49,7 +49,29 @@ export async function runCase(
       const candidate = value as {
         toArray?: () => unknown[];
         objects?: () => Iterable<unknown>;
+        columns?: string[];
+        col?: (name: string) => { get: (index: number) => unknown; length: number };
+        length?: number;
       };
+
+      if (typeof candidate.col === 'function' && Array.isArray(candidate.columns)) {
+        let checksum = 0;
+        const len = typeof candidate.length === 'number' ? candidate.length : 0;
+        for (let ci = 0; ci < candidate.columns.length; ci++) {
+          const name = candidate.columns[ci]!;
+          const series = candidate.col(name);
+          if (len > 0) {
+            const first = series.get(0);
+            const last = series.get(len - 1);
+            if (first !== null && first !== undefined) checksum += 1;
+            if (last !== null && last !== undefined) checksum += 1;
+          }
+        }
+        if (checksum < 0) {
+          throw new Error('unreachable');
+        }
+        return;
+      }
 
       if (typeof candidate.toArray === 'function') {
         const arr = candidate.toArray();

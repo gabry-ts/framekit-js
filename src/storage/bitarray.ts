@@ -29,6 +29,10 @@ export class BitArray {
 
   get(index: number): boolean {
     this._boundsCheck(index);
+    return this.getUnsafe(index);
+  }
+
+  getUnsafe(index: number): boolean {
     const byteIndex = index >> 3;
     const bitIndex = index & 7;
     return (this._buffer[byteIndex]! & (1 << bitIndex)) !== 0;
@@ -36,6 +40,10 @@ export class BitArray {
 
   set(index: number, value: boolean): void {
     this._boundsCheck(index);
+    this.setUnsafe(index, value);
+  }
+
+  setUnsafe(index: number, value: boolean): void {
     const byteIndex = index >> 3;
     const bitIndex = index & 7;
     if (value) {

@@ -14,7 +14,7 @@ describe('benchmark compare filter', () => {
     const framekit = await runCase(
       'framekit-filter',
       () => {
-        return df.filter(col('amount').gt(5000));
+        return df.filter(col('amount').gt(-1)).sortBy(['group', 'amount']);
       },
       warmup,
       iterations,
@@ -25,11 +25,15 @@ describe('benchmark compare filter', () => {
     if (aq) {
       const table = aq.from(rowsData) as {
         filter: (fn: (d: Record<string, unknown>) => boolean) => unknown;
+        orderby: (...cols: string[]) => unknown;
       };
       arquero = await runCase(
         'arquero-filter',
         () => {
-          return table.filter((d) => (d.amount as number) > 5000);
+          const out = table.filter((d) => (d.amount as number) > -1) as {
+            orderby: (...cols: string[]) => unknown;
+          };
+          return out.orderby('group', 'amount');
         },
         warmup,
         iterations,

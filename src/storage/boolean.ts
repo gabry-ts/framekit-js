@@ -14,7 +14,7 @@ export class BooleanColumn extends Column<boolean> {
 
   get(index: number): boolean | null {
     this._boundsCheck(index);
-    if (!this._nullMask.get(index)) {
+    if (!this._nullMask.getUnsafe(index)) {
       return null;
     }
     return this._data[index]! !== 0;
@@ -24,7 +24,7 @@ export class BooleanColumn extends Column<boolean> {
     const sliced = this._data.subarray(start, end);
     const mask = new BitArray(sliced.length);
     for (let i = 0; i < sliced.length; i++) {
-      mask.set(i, this._nullMask.get(start + i));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(start + i));
     }
     return new BooleanColumn(sliced, mask);
   }
@@ -50,11 +50,14 @@ export class BooleanColumn extends Column<boolean> {
   }
 
   take(indices: Int32Array): BooleanColumn {
-    const idxArray: number[] = [];
+    const data = new Uint8Array(indices.length);
+    const mask = new BitArray(indices.length);
     for (let i = 0; i < indices.length; i++) {
-      idxArray.push(indices[i]!);
+      const idx = indices[i]!;
+      data[i] = this._data[idx]!;
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
-    return this._takeByIndices(idxArray);
+    return new BooleanColumn(data, mask);
   }
 
   estimatedMemoryBytes(): number {
@@ -68,7 +71,7 @@ export class BooleanColumn extends Column<boolean> {
       const v = values[i];
       if (v !== null && v !== undefined) {
         data[i] = v ? 1 : 0;
-        mask.set(i, true);
+        mask.setUnsafe(i, true);
       }
     }
     return new BooleanColumn(data, mask);
@@ -88,9 +91,8 @@ export class BooleanColumn extends Column<boolean> {
     const mask = new BitArray(indices.length);
     for (let i = 0; i < indices.length; i++) {
       const idx = indices[i]!;
-      this._boundsCheck(idx);
       data[i] = this._data[idx]!;
-      mask.set(i, this._nullMask.get(idx));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
     return new BooleanColumn(data, mask);
   }

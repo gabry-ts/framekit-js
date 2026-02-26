@@ -12,12 +12,12 @@ Checked-in snapshot (`BENCH_ROWS=50000`, `BENCH_ITERS=10`, `BENCH_WARMUP=3`):
 
 | Operation | FrameKit Median (ms) | Arquero Median (ms) | Relative (FrameKit/Arquero) |
 | --------- | -------------------: | ------------------: | --------------------------: |
-| Filter    |              11.6839 |              4.4141 |                       2.65x |
-| Sort      |              66.5706 |             30.2187 |                       2.20x |
-| GroupBy   |               8.1293 |              9.3622 |                       0.87x |
-| Join      |              66.2457 |             25.6667 |                       2.58x |
-| Reshape   |              61.2699 |             47.5455 |                       1.29x |
-| Window    |              51.3322 |             59.3355 |                       0.87x |
+| Filter    |              26.9228 |             36.6342 |                       0.73x |
+| Sort      |              25.5620 |             50.6992 |                       0.50x |
+| GroupBy   |               3.9674 |              5.0675 |                       0.78x |
+| Join      |              20.4444 |             61.5447 |                       0.33x |
+| Reshape   |              17.2577 |             65.6563 |                       0.26x |
+| Window    |              22.2838 |             64.1068 |                       0.35x |
 
 Raw sources:
 

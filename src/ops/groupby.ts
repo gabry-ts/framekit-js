@@ -6,7 +6,7 @@ import { Utf8Column } from '../storage/string';
 import { BooleanColumn } from '../storage/boolean';
 import { DateColumn } from '../storage/date';
 import { ColumnNotFoundError } from '../errors';
-import { AggExpr, col } from '../expr/expr';
+import { AggExpr, SumAggExpr, col } from '../expr/expr';
 import type { ParallelAggOptions, AggSpec } from '../engine/parallelism/types';
 import { shouldUseParallel, parallelAgg } from '../engine/parallelism/parallel-agg';
 
@@ -191,6 +191,48 @@ export class GroupBy<
     }
 
     const keyCols = keyColumns.map((k) => this._df.col(k).column);
+
+    if (aggNames.length === 1) {
+      const onlyAggName = aggNames[0]!;
+      const onlyAgg = resolvedSpecs[onlyAggName]!;
+      if (onlyAgg instanceof SumAggExpr) {
+        const sourceCol = this._df.col(onlyAgg.dependencies[0]!).column;
+        for (const [, indices] of groupEntries) {
+          const firstIndex = indices[0]!;
+          for (let ki = 0; ki < keyColumns.length; ki++) {
+            keyValues.get(keyColumns[ki]!)!.push(keyCols[ki]!.get(firstIndex));
+          }
+
+          let sum = 0;
+          let hasValue = false;
+          for (let ii = 0; ii < indices.length; ii++) {
+            const v = sourceCol.get(indices[ii]!);
+            if (typeof v === 'number') {
+              sum += v;
+              hasValue = true;
+            }
+          }
+          aggValues.get(onlyAggName)!.push(hasValue ? sum : null);
+        }
+
+        const resultColumns = new Map<string, Column<unknown>>();
+        const columnOrder: string[] = [];
+        for (let ki = 0; ki < keyColumns.length; ki++) {
+          const k = keyColumns[ki]!;
+          const vals = keyValues.get(k)!;
+          resultColumns.set(k, this._buildColumnLike(keyCols[ki]!, vals));
+          columnOrder.push(k);
+        }
+        resultColumns.set(
+          onlyAggName,
+          Float64Column.from(aggValues.get(onlyAggName)! as (number | null)[]),
+        );
+        columnOrder.push(onlyAggName);
+
+        const Ctor = this._df.constructor as DataFrameConstructor;
+        return new Ctor<Record<string, unknown>>(resultColumns, columnOrder);
+      }
+    }
 
     for (const [, indices] of groupEntries) {
       // Extract key values from first row of each group

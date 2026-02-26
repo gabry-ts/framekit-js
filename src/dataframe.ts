@@ -364,7 +364,7 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
         const literal = (cmpAny._right as unknown as { _value: unknown })._value;
         const source = this._columns.get(columnName);
         if (source) {
-          const indices: number[] = [];
+          let count = 0;
           for (let i = 0; i < this.length; i++) {
             const v = source.get(i);
             if (v === null || literal === null) continue;
@@ -389,30 +389,92 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
                 keep = (v as number) <= (literal as number);
                 break;
             }
-            if (keep) indices.push(i);
+            if (keep) count++;
           }
-          return this._takeByIndices(indices);
+
+          if (count === this.length) {
+            return this;
+          }
+          if (count === 0) {
+            return this.slice(0, 0);
+          }
+
+          const indices = new Int32Array(count);
+          let pos = 0;
+          for (let i = 0; i < this.length; i++) {
+            const v = source.get(i);
+            if (v === null || literal === null) continue;
+            let keep = false;
+            switch (cmpAny._op) {
+              case 'eq':
+                keep = v === literal;
+                break;
+              case 'neq':
+                keep = v !== literal;
+                break;
+              case 'gt':
+                keep = (v as number) > (literal as number);
+                break;
+              case 'gte':
+                keep = (v as number) >= (literal as number);
+                break;
+              case 'lt':
+                keep = (v as number) < (literal as number);
+                break;
+              case 'lte':
+                keep = (v as number) <= (literal as number);
+                break;
+            }
+            if (keep) indices[pos++] = i;
+          }
+          return this._takeByInt32Indices(indices);
         }
       }
 
       const boolSeries = predicateOrExpr.evaluate(this as DataFrame);
-      const indices: number[] = [];
+      let count = 0;
       for (let i = 0; i < this.length; i++) {
         if (boolSeries.get(i) === true) {
-          indices.push(i);
+          count++;
         }
       }
-      return this._takeByIndices(indices);
+      if (count === this.length) {
+        return this;
+      }
+      if (count === 0) {
+        return this.slice(0, 0);
+      }
+      const indices = new Int32Array(count);
+      let pos = 0;
+      for (let i = 0; i < this.length; i++) {
+        if (boolSeries.get(i) === true) {
+          indices[pos++] = i;
+        }
+      }
+      return this._takeByInt32Indices(indices);
     }
 
     const predicate = predicateOrExpr;
-    const indices: number[] = [];
+    let count = 0;
     for (let i = 0; i < this.length; i++) {
       if (predicate(this.row(i))) {
-        indices.push(i);
+        count++;
       }
     }
-    return this._takeByIndices(indices);
+    if (count === this.length) {
+      return this;
+    }
+    if (count === 0) {
+      return this.slice(0, 0);
+    }
+    const indices = new Int32Array(count);
+    let pos = 0;
+    for (let i = 0; i < this.length; i++) {
+      if (predicate(this.row(i))) {
+        indices[pos++] = i;
+      }
+    }
+    return this._takeByInt32Indices(indices);
   }
 
   apply(fn: (row: S) => S): DataFrame<S> {
@@ -501,6 +563,51 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
         newColumns.set(name, this._columns.get(name)!.take(int32Indices));
       }
       return new DataFrame<S>(newColumns, [...this._columnOrder]);
+    }
+
+    if (
+      cols.length === 2 &&
+      this._columns.get(cols[0]!)!.dtype === DType.Utf8 &&
+      (this._columns.get(cols[1]!)!.dtype === DType.Float64 ||
+        this._columns.get(cols[1]!)!.dtype === DType.Int32)
+    ) {
+      const c0 = this._columns.get(cols[0]!)!;
+      const c1 = this._columns.get(cols[1]!)!;
+      const v0: (string | null)[] = new Array(this.length);
+      const v1: (number | null)[] = new Array(this.length);
+      for (let i = 0; i < this.length; i++) {
+        v0[i] = c0.get(i) as string | null;
+        v1[i] = c1.get(i) as number | null;
+      }
+
+      const d0 = orders[0] === 'desc';
+      const d1 = orders[1] === 'desc';
+      const indices = Array.from({ length: this.length }, (_, i) => i);
+      indices.sort((a, b) => {
+        const a0 = v0[a];
+        const b0 = v0[b];
+        const a0Null = a0 === null;
+        const b0Null = b0 === null;
+        if (!a0Null || !b0Null) {
+          if (a0Null) return 1;
+          if (b0Null) return -1;
+          const cmp0 = a0! < b0! ? -1 : a0! > b0! ? 1 : 0;
+          if (cmp0 !== 0) return d0 ? -cmp0 : cmp0;
+        }
+
+        const a1 = v1[a];
+        const b1 = v1[b];
+        const a1Null = a1 === null;
+        const b1Null = b1 === null;
+        if (a1Null && b1Null) return 0;
+        if (a1Null) return 1;
+        if (b1Null) return -1;
+        const cmp1 = a1! - b1!;
+        return d1 ? -cmp1 : cmp1;
+      });
+
+      const int32Indices = new Int32Array(indices);
+      return this._takeByInt32Indices(int32Indices);
     }
 
     // Build arrays of raw values for each sort column (avoids repeated get calls)
@@ -719,6 +826,10 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
 
   private _takeByIndices(indices: number[]): DataFrame<S> {
     const int32Indices = new Int32Array(indices);
+    return this._takeByInt32Indices(int32Indices);
+  }
+
+  private _takeByInt32Indices(int32Indices: Int32Array): DataFrame<S> {
     const newColumns = new Map<string, Column<unknown>>();
     for (const name of this._columnOrder) {
       newColumns.set(name, this._columns.get(name)!.take(int32Indices));

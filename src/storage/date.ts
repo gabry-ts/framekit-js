@@ -14,7 +14,7 @@ export class DateColumn extends Column<Date> {
 
   get(index: number): Date | null {
     this._boundsCheck(index);
-    if (!this._nullMask.get(index)) {
+    if (!this._nullMask.getUnsafe(index)) {
       return null;
     }
     return new Date(this._data[index]!);
@@ -24,7 +24,7 @@ export class DateColumn extends Column<Date> {
     const sliced = this._data.subarray(start, end);
     const mask = new BitArray(sliced.length);
     for (let i = 0; i < sliced.length; i++) {
-      mask.set(i, this._nullMask.get(start + i));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(start + i));
     }
     return new DateColumn(sliced, mask);
   }
@@ -50,11 +50,14 @@ export class DateColumn extends Column<Date> {
   }
 
   take(indices: Int32Array): DateColumn {
-    const idxArray: number[] = [];
+    const data = new Float64Array(indices.length);
+    const mask = new BitArray(indices.length);
     for (let i = 0; i < indices.length; i++) {
-      idxArray.push(indices[i]!);
+      const idx = indices[i]!;
+      data[i] = this._data[idx]!;
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
-    return this._takeByIndices(idxArray);
+    return new DateColumn(data, mask);
   }
 
   estimatedMemoryBytes(): number {
@@ -68,7 +71,7 @@ export class DateColumn extends Column<Date> {
       const v = values[i];
       if (v !== null && v !== undefined) {
         data[i] = v.getTime();
-        mask.set(i, true);
+        mask.setUnsafe(i, true);
       }
     }
     return new DateColumn(data, mask);
@@ -88,9 +91,8 @@ export class DateColumn extends Column<Date> {
     const mask = new BitArray(indices.length);
     for (let i = 0; i < indices.length; i++) {
       const idx = indices[i]!;
-      this._boundsCheck(idx);
       data[i] = this._data[idx]!;
-      mask.set(i, this._nullMask.get(idx));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
     return new DateColumn(data, mask);
   }

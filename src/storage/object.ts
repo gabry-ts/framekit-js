@@ -14,7 +14,7 @@ export class ObjectColumn extends Column<unknown> {
 
   get(index: number): unknown {
     this._boundsCheck(index);
-    if (!this._nullMask.get(index)) {
+    if (!this._nullMask.getUnsafe(index)) {
       return null;
     }
     return this._data[index]!;
@@ -24,7 +24,7 @@ export class ObjectColumn extends Column<unknown> {
     const sliced = this._data.slice(start, end);
     const mask = new BitArray(sliced.length);
     for (let i = 0; i < sliced.length; i++) {
-      mask.set(i, this._nullMask.get(start + i));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(start + i));
     }
     return new ObjectColumn(sliced, mask);
   }
@@ -50,11 +50,14 @@ export class ObjectColumn extends Column<unknown> {
   }
 
   take(indices: Int32Array): ObjectColumn {
-    const idxArray: number[] = [];
+    const data: unknown[] = new Array<unknown>(indices.length);
+    const mask = new BitArray(indices.length);
     for (let i = 0; i < indices.length; i++) {
-      idxArray.push(indices[i]!);
+      const idx = indices[i]!;
+      data[i] = this._data[idx]!;
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
-    return this._takeByIndices(idxArray);
+    return new ObjectColumn(data, mask);
   }
 
   estimatedMemoryBytes(): number {
@@ -68,7 +71,7 @@ export class ObjectColumn extends Column<unknown> {
       const v = values[i];
       if (v !== null && v !== undefined) {
         data[i] = v;
-        mask.set(i, true);
+        mask.setUnsafe(i, true);
       } else {
         data[i] = null;
       }
@@ -90,9 +93,8 @@ export class ObjectColumn extends Column<unknown> {
     const mask = new BitArray(indices.length);
     for (let i = 0; i < indices.length; i++) {
       const idx = indices[i]!;
-      this._boundsCheck(idx);
       data[i] = this._data[idx]!;
-      mask.set(i, this._nullMask.get(idx));
+      mask.setUnsafe(i, this._nullMask.getUnsafe(idx));
     }
     return new ObjectColumn(data, mask);
   }

@@ -137,12 +137,12 @@ Current checked-in snapshot (`BENCH_ROWS=50000`, `BENCH_ITERS=10`, `BENCH_WARMUP
 
 | Operation | FrameKit Median (ms) | Arquero Median (ms) | Relative (FrameKit/Arquero) | Source                                    |
 | --------- | -------------------: | ------------------: | --------------------------: | ----------------------------------------- |
-| Filter    |              11.6839 |              4.4141 |                       2.65x | `benchmarks/results/compare-filter.json`  |
-| Sort      |              66.5706 |             30.2187 |                       2.20x | `benchmarks/results/compare-sort.json`    |
-| GroupBy   |               8.1293 |              9.3622 |                       0.87x | `benchmarks/results/compare-groupby.json` |
-| Join      |              66.2457 |             25.6667 |                       2.58x | `benchmarks/results/compare-join.json`    |
-| Reshape   |              61.2699 |             47.5455 |                       1.29x | `benchmarks/results/compare-reshape.json` |
-| Window    |              51.3322 |             59.3355 |                       0.87x | `benchmarks/results/compare-window.json`  |
+| Filter    |              26.9228 |             36.6342 |                       0.73x | `benchmarks/results/compare-filter.json`  |
+| Sort      |              25.5620 |             50.6992 |                       0.50x | `benchmarks/results/compare-sort.json`    |
+| GroupBy   |               3.9674 |              5.0675 |                       0.78x | `benchmarks/results/compare-groupby.json` |
+| Join      |              20.4444 |             61.5447 |                       0.33x | `benchmarks/results/compare-join.json`    |
+| Reshape   |              17.2577 |             65.6563 |                       0.26x | `benchmarks/results/compare-reshape.json` |
+| Window    |              22.2838 |             64.1068 |                       0.35x | `benchmarks/results/compare-window.json`  |
 
 ### Run Benchmarks Locally
 

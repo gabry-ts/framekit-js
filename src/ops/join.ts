@@ -245,6 +245,60 @@ export function hashJoin<L extends Record<string, unknown>, R extends Record<str
     }
   }
 
+  // Fast path: left join on a single unique right key can avoid row-pair materialization.
+  if (how === 'left' && leftKeys.length === 1 && rightKeys.length === 1) {
+    const leftKeyCol = left.col(leftKeys[0]!).column;
+    const rightKeyCol = right.col(rightKeys[0]!).column;
+
+    const rightIndexByKey = new Map<unknown, number>();
+    let rightKeyUnique = true;
+    for (let i = 0; i < right.length; i++) {
+      const key = normalizeSingleKey(rightKeyCol.get(i));
+      if (key === null) continue;
+      if (rightIndexByKey.has(key)) {
+        rightKeyUnique = false;
+        break;
+      }
+      rightIndexByKey.set(key, i);
+    }
+
+    if (rightKeyUnique) {
+      const resultColumns = new Map<string, Column<unknown>>();
+      const columnOrder: string[] = [];
+
+      for (const colName of left.columns) {
+        resultColumns.set(colName, left.col(colName).column);
+        columnOrder.push(colName);
+      }
+
+      const rightNonKeyCols = right.columns.filter((c) => c !== rightKeys[0]);
+      const rightColRenames = new Map<string, string>();
+      for (const rc of rightNonKeyCols) {
+        rightColRenames.set(rc, left.columns.includes(rc) ? `${rc}${suffix}` : rc);
+      }
+
+      for (const colName of rightNonKeyCols) {
+        const srcCol = right.col(colName).column;
+        const values: unknown[] = new Array(left.length);
+        for (let li = 0; li < left.length; li++) {
+          const key = normalizeSingleKey(leftKeyCol.get(li));
+          if (key === null) {
+            values[li] = null;
+            continue;
+          }
+          const ri = rightIndexByKey.get(key);
+          values[li] = ri === undefined ? null : srcCol.get(ri);
+        }
+        const outputName = rightColRenames.get(colName)!;
+        resultColumns.set(outputName, buildColumnFromValues(srcCol.dtype, values));
+        columnOrder.push(outputName);
+      }
+
+      const Ctor = left.constructor as DataFrameConstructor;
+      return new Ctor<Record<string, unknown>>(resultColumns, columnOrder);
+    }
+  }
+
   // Build hash table on right side
   const rightKeyCols = rightKeys.map((k) => right.col(k).column);
   const hashTable = new Map<unknown, number | number[]>();
