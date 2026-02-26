@@ -54,7 +54,9 @@
     "lint:fix": "eslint \"src/**/*.ts\" \"tests/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\"",
-    "bench": "vitest bench"
+    "bench": "vitest bench",
+    "bench:smoke": "BENCH_ROWS=10000 BENCH_ITERS=2 BENCH_WARMUP=1 vitest run -c vitest.bench.config.ts tests/benchmarks/compare-filter.bench.ts",
+    "bench:full": "BENCH_ROWS=100000 BENCH_ITERS=5 BENCH_WARMUP=2 vitest run -c vitest.bench.config.ts tests/benchmarks/compare-*.bench.ts"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
@@ -62,6 +64,7 @@
     "@typescript-eslint/parser": "^8.0.0",
     "@vitest/coverage-v8": "^2.0.0",
     "apache-arrow": "^21.1.0",
+    "arquero": "^8.0.3",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^9.0.0",
     "exceljs": "^4.4.0",
@@ -72,9 +75,9 @@
     "vitest": "^2.0.0"
   },
   "peerDependencies": {
+    "apache-arrow": ">=14.0.0",
     "exceljs": "^4.0.0",
-    "parquet-wasm": ">=0.5.0",
-    "apache-arrow": ">=14.0.0"
+    "parquet-wasm": ">=0.5.0"
   },
   "peerDependenciesMeta": {
     "exceljs": {

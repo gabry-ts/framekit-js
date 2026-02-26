@@ -131,18 +131,18 @@ Wiki pages are sourced from `wiki/` and can be synced through `.github/workflows
 - CI includes smoke and nightly benchmark workflows.
 - Regression checks are available in the benchmark harness.
 
-### Latest Benchmark Snapshot
+### Latest Benchmark Snapshot (FrameKit vs Arquero)
 
 Current checked-in snapshot (`BENCH_ROWS=50000`, `BENCH_ITERS=10`, `BENCH_WARMUP=3`):
 
-| Operation | Median (ms) | p95 (ms) | Source                                    |
-| --------- | ----------: | -------: | ----------------------------------------- |
-| Filter    |     14.0510 |  57.5378 | `benchmarks/results/compare-filter.json`  |
-| Sort      |     40.1102 |  48.6977 | `benchmarks/results/compare-sort.json`    |
-| GroupBy   |     13.5805 |  17.2832 | `benchmarks/results/compare-groupby.json` |
-| Join      |     43.2021 |  52.3730 | `benchmarks/results/compare-join.json`    |
-| Reshape   |     20.1917 |  48.8045 | `benchmarks/results/compare-reshape.json` |
-| Window    |     28.1787 |  52.4062 | `benchmarks/results/compare-window.json`  |
+| Operation | FrameKit Median (ms) | Arquero Median (ms) | Relative (FrameKit/Arquero) | Source                                    |
+| --------- | -------------------: | ------------------: | --------------------------: | ----------------------------------------- |
+| Filter    |               5.2187 |              1.3451 |                       3.88x | `benchmarks/results/compare-filter.json`  |
+| Sort      |              34.3772 |              0.1628 |                     211.23x | `benchmarks/results/compare-sort.json`    |
+| GroupBy   |              11.2867 |              6.1850 |                       1.82x | `benchmarks/results/compare-groupby.json` |
+| Join      |              37.5740 |             11.9141 |                       3.15x | `benchmarks/results/compare-join.json`    |
+| Reshape   |              17.7959 |             40.0524 |                       0.44x | `benchmarks/results/compare-reshape.json` |
+| Window    |              23.4937 |              1.6053 |                      14.64x | `benchmarks/results/compare-window.json`  |
 
 ### Run Benchmarks Locally
 
@@ -154,7 +154,7 @@ npm run bench:smoke
 npm run bench:full
 ```
 
-For human-readable benchmark reports, see `benchmarks/results/*.md`.
+For human-readable per-operation reports, see `benchmarks/results/*.md`.
 
 Benchmark outputs are directional and environment-sensitive; validate on your own hardware and runtime before drawing hard conclusions.
 

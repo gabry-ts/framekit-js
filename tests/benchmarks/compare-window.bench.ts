@@ -3,6 +3,10 @@ import { col } from '../../src';
 import { numericDataset } from './data/generators';
 import { maybeLoadArquero, runCase, writeComparisonResults } from './runner';
 
+declare const op: {
+  row_number: () => unknown;
+};
+
 describe('benchmark compare window', () => {
   it('runs FrameKit vs Arquero window benchmark', async () => {
     const rows = Number(process.env.BENCH_ROWS ?? '100000');
@@ -29,7 +33,7 @@ describe('benchmark compare window', () => {
       arquero = await runCase(
         'arquero-window',
         () => {
-          table.derive({ rn: (_d: Record<string, unknown>, i: number) => i + 1 });
+          table.derive({ rn: () => op.row_number() });
         },
         warmup,
         iterations,

@@ -2,4 +2,7 @@
 
 | Engine | Median (ms) | p95 (ms) |
 |---|---:|---:|
-| FrameKit | 28.179 | 52.406 |
+| FrameKit | 23.494 | 44.144 |
+| Arquero | 1.605 | 2.868 |
+
+Relative median (FrameKit / Arquero): 1463.52%

@@ -6,18 +6,18 @@
 - Output artifacts are in `benchmarks/results/`.
 - CI includes smoke and nightly benchmark workflows.
 
-### Latest Snapshot
+### Latest Snapshot (FrameKit vs Arquero)
 
 Checked-in snapshot (`BENCH_ROWS=50000`, `BENCH_ITERS=10`, `BENCH_WARMUP=3`):
 
-| Operation | Median (ms) | p95 (ms) |
-| --------- | ----------: | -------: |
-| Filter    |     14.0510 |  57.5378 |
-| Sort      |     40.1102 |  48.6977 |
-| GroupBy   |     13.5805 |  17.2832 |
-| Join      |     43.2021 |  52.3730 |
-| Reshape   |     20.1917 |  48.8045 |
-| Window    |     28.1787 |  52.4062 |
+| Operation | FrameKit Median (ms) | Arquero Median (ms) | Relative (FrameKit/Arquero) |
+| --------- | -------------------: | ------------------: | --------------------------: |
+| Filter    |               5.2187 |              1.3451 |                       3.88x |
+| Sort      |              34.3772 |              0.1628 |                     211.23x |
+| GroupBy   |              11.2867 |              6.1850 |                       1.82x |
+| Join      |              37.5740 |             11.9141 |                       3.15x |
+| Reshape   |              17.7959 |             40.0524 |                       0.44x |
+| Window    |              23.4937 |              1.6053 |                      14.64x |
 
 Raw sources:
 

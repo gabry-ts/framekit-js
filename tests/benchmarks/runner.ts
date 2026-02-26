@@ -50,13 +50,21 @@ export async function runCase(
 
 export async function maybeLoadArquero(): Promise<null | {
   from: (rows: Record<string, unknown>[]) => unknown;
+  op: Record<string, (...args: unknown[]) => unknown>;
 }> {
   try {
     const moduleName = 'arquero';
-    const mod = (await import(moduleName)) as { default?: unknown; from?: unknown };
-    const candidate = (mod.default ?? mod) as { from?: unknown };
-    if (typeof candidate.from === 'function') {
-      return { from: candidate.from as (rows: Record<string, unknown>[]) => unknown };
+    const mod = (await import(moduleName)) as {
+      default?: unknown;
+      from?: unknown;
+      op?: unknown;
+    };
+    const candidate = (mod.default ?? mod) as { from?: unknown; op?: unknown };
+    if (typeof candidate.from === 'function' && candidate.op && typeof candidate.op === 'object') {
+      return {
+        from: candidate.from as (rows: Record<string, unknown>[]) => unknown,
+        op: candidate.op as Record<string, (...args: unknown[]) => unknown>,
+      };
     }
     return null;
   } catch {

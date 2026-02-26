@@ -3,6 +3,10 @@ import { col } from '../../src';
 import { numericDataset } from './data/generators';
 import { maybeLoadArquero, runCase, writeComparisonResults } from './runner';
 
+declare const op: {
+  sum: (value: unknown) => unknown;
+};
+
 describe('benchmark compare groupby', () => {
   it('runs FrameKit vs Arquero groupby benchmark', async () => {
     const rows = Number(process.env.BENCH_ROWS ?? '100000');
@@ -32,12 +36,7 @@ describe('benchmark compare groupby', () => {
         'arquero-groupby',
         () => {
           table.groupby('group').rollup({
-            total: (d: Record<string, unknown[]>) => {
-              const values = d.amount ?? [];
-              let s = 0;
-              for (const v of values) if (typeof v === 'number') s += v;
-              return s;
-            },
+            total: (d: Record<string, unknown>) => op.sum(d.amount as unknown),
           });
         },
         warmup,

@@ -2,16 +2,16 @@
 
 This folder stores generated benchmark outputs from compare suites.
 
-## Latest Snapshot
+## Latest Snapshot (FrameKit vs Arquero)
 
-| Operation | Median (ms) | p95 (ms) | JSON                   | Markdown             |
-| --------- | ----------: | -------: | ---------------------- | -------------------- |
-| Filter    |     14.0510 |  57.5378 | `compare-filter.json`  | `compare-filter.md`  |
-| Sort      |     40.1102 |  48.6977 | `compare-sort.json`    | `compare-sort.md`    |
-| GroupBy   |     13.5805 |  17.2832 | `compare-groupby.json` | `compare-groupby.md` |
-| Join      |     43.2021 |  52.3730 | `compare-join.json`    | `compare-join.md`    |
-| Reshape   |     20.1917 |  48.8045 | `compare-reshape.json` | `compare-reshape.md` |
-| Window    |     28.1787 |  52.4062 | `compare-window.json`  | `compare-window.md`  |
+| Operation | FrameKit Median (ms) | Arquero Median (ms) | Relative (FrameKit/Arquero) | JSON                   | Markdown             |
+| --------- | -------------------: | ------------------: | --------------------------: | ---------------------- | -------------------- |
+| Filter    |               5.2187 |              1.3451 |                       3.88x | `compare-filter.json`  | `compare-filter.md`  |
+| Sort      |              34.3772 |              0.1628 |                     211.23x | `compare-sort.json`    | `compare-sort.md`    |
+| GroupBy   |              11.2867 |              6.1850 |                       1.82x | `compare-groupby.json` | `compare-groupby.md` |
+| Join      |              37.5740 |             11.9141 |                       3.15x | `compare-join.json`    | `compare-join.md`    |
+| Reshape   |              17.7959 |             40.0524 |                       0.44x | `compare-reshape.json` | `compare-reshape.md` |
+| Window    |              23.4937 |              1.6053 |                      14.64x | `compare-window.json`  | `compare-window.md`  |
 
 ## Re-run
 
