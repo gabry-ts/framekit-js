@@ -1,0 +1,157 @@
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: #252526;
+  border-right: 1px solid #3e3e42;
+  overflow-y: auto;
+  overflow-x: hidden;
+  font-size: 12px;
+  color: #cccccc;
+}
+
+.sidebar-section {
+  padding: 8px 0;
+}
+
+.sidebar-section-title {
+  padding: 4px 12px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9d9d9d;
+}
+
+.sidebar-divider {
+  height: 1px;
+  background: #3e3e42;
+  margin: 4px 0;
+}
+
+/* Snippets */
+.snippet-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.snippet-group {
+  display: flex;
+  flex-direction: column;
+}
+
+.snippet-category {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: #cccccc;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+}
+
+.snippet-category:hover {
+  background: #2a2d2e;
+}
+
+.snippet-caret {
+  font-size: 10px;
+  color: #9d9d9d;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.snippet-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.snippet-item {
+  padding: 3px 12px 3px 28px;
+  background: none;
+  border: none;
+  color: #9d9d9d;
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.snippet-item:hover {
+  background: #094771;
+  color: #fff;
+}
+
+/* Datasets */
+.dataset-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 0 8px;
+}
+
+.dataset-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  background: #1e1e1e;
+  border: 1px solid #3e3e42;
+  border-radius: 4px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.dataset-item:hover {
+  background: #094771;
+  border-color: #0e639c;
+}
+
+.dataset-label {
+  color: #9cdcfe;
+  font-weight: 600;
+  font-size: 12px;
+}
+
+.dataset-desc {
+  color: #6b6b6b;
+  font-size: 10px;
+}
+
+.dataset-item:hover .dataset-desc {
+  color: #9d9d9d;
+}
+
+/* File upload */
+.file-upload {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+}
+
+.file-upload-btn {
+  background: #0e639c;
+  color: #fff;
+  border: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.file-upload-btn:hover {
+  background: #1177bb;
+}
+
+.file-upload-hint {
+  color: #6b6b6b;
+  font-size: 11px;
+}
