@@ -278,6 +278,7 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
   }
 
   derive(exprs: Record<string, (row: S) => unknown>): DataFrame {
+    // eslint-disable-next-line @typescript-eslint/no-this-alias
     let result: DataFrame = this;
     for (const [name, fn] of Object.entries(exprs)) {
       if (this.length === 0) {
@@ -602,8 +603,8 @@ export class DataFrame<S extends Record<string, unknown> = Record<string, unknow
     ) {
       const c0 = this._columns.get(cols[0]!)!;
       const c1 = this._columns.get(cols[1]!)!;
-      const v0: (string | null)[] = new Array(this.length);
-      const v1: (number | null)[] = new Array(this.length);
+      const v0: (string | null)[] = new Array<string | null>(this.length);
+      const v1: (number | null)[] = new Array<number | null>(this.length);
       for (let i = 0; i < this.length; i++) {
         v0[i] = c0.get(i) as string | null;
         v1[i] = c1.get(i) as number | null;

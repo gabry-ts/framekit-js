@@ -29,6 +29,7 @@ function serializeKey(columns: Column<unknown>[], index: number): string | null 
   return parts.join('\x01');
 }
 
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
 function normalizeSingleKey(value: unknown): unknown | null {
   if (value === null) return null;
   if (value instanceof Date) return `\0d${value.getTime()}`;

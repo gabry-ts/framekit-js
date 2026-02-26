@@ -1,7 +1,8 @@
 import type { DataFrame } from '../dataframe';
 import { ColumnNotFoundError } from '../errors';
 
-export type ImputeValue = unknown | ((d: Record<string, unknown[]>) => unknown);
+// eslint-disable-next-line @typescript-eslint/no-redundant-type-constituents
+export type ImputeValue = ((d: Record<string, unknown[]>) => unknown) | unknown;
 
 export interface ImputeOptions {
   expand?: string[];
@@ -51,6 +52,7 @@ export function impute(
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
   const sourceRows = df.toArray() as Record<string, unknown>[];
   let workingRows = sourceRows;
 

@@ -12,8 +12,8 @@ describe('benchmark compare join', () => {
       amount: 'amount_r',
       score: 'score_r',
     });
-    const leftRows = left.toArray() as Record<string, unknown>[];
-    const rightRows = right.toArray() as Record<string, unknown>[];
+    const leftRows: Record<string, unknown>[] = left.toArray();
+    const rightRows: Record<string, unknown>[] = right.toArray();
 
     const framekit = await runCase(
       'framekit-join',
