@@ -38,6 +38,53 @@ export class GroupBy<
     this._groupMap = new Map<string, number[]>();
     const columns: Column<unknown>[] = keys.map((k) => df.col(k).column);
 
+    // Fast path: single-key interned Utf8Column — use dictionary indices as bucket keys
+    if (keys.length === 1) {
+      const col = columns[0]!;
+      if (col instanceof Utf8Column && col.isInterned) {
+        const interned = col.internedStorage!;
+        const internedIndices = interned.indices;
+        const dictLen = interned.dictionary.length;
+        const n = df.length;
+
+        // Use array of arrays indexed by dictionary index
+        const buckets: number[][] = new Array<number[]>(dictLen);
+        for (let d = 0; d < dictLen; d++) {
+          buckets[d] = [];
+        }
+
+        if (col.allValid) {
+          for (let i = 0; i < n; i++) {
+            buckets[internedIndices[i]!]!.push(i);
+          }
+        } else {
+          const nullMask = col.nullMask;
+          // Null group bucket
+          let nullBucket: number[] | null = null;
+          for (let i = 0; i < n; i++) {
+            if (nullMask.getUnsafe(i)) {
+              buckets[internedIndices[i]!]!.push(i);
+            } else {
+              if (!nullBucket) nullBucket = [];
+              nullBucket.push(i);
+            }
+          }
+          if (nullBucket) {
+            this._groupMap.set('\0null', nullBucket);
+          }
+        }
+
+        // Convert buckets to groupMap entries
+        for (let d = 0; d < dictLen; d++) {
+          const bucket = buckets[d]!;
+          if (bucket.length > 0) {
+            this._groupMap.set(`\0string${interned.dictionary[d]!}`, bucket);
+          }
+        }
+        return;
+      }
+    }
+
     for (let i = 0; i < df.length; i++) {
       const keyStr = this._serializeKey(columns, i);
       const group = this._groupMap.get(keyStr);
