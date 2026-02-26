@@ -1,0 +1,31 @@
+name: Bench Smoke
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    env:
+      BENCH_REGRESSION_THRESHOLD: '1.15'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Run benchmark smoke suite
+        run: npm run bench:smoke
+
+      - name: Enforce regression threshold
+        run: |
+          node -e "const fs=require('fs');const path=require('path');const dir=path.resolve('benchmarks/results');const files=fs.existsSync(dir)?fs.readdirSync(dir).filter(f=>f.endsWith('.json')):[];const t=Number(process.env.BENCH_REGRESSION_THRESHOLD||'1.15');let bad=0;for(const f of files){const r=JSON.parse(fs.readFileSync(path.join(dir,f),'utf8'));if(typeof r.relative==='number'&&r.relative>t){console.error('[bench-smoke] '+r.benchmark+' ratio '+r.relative.toFixed(3)+' > '+t.toFixed(3));bad++;}}if(bad>0)process.exit(1);"
