@@ -35,6 +35,26 @@ export class Utf8Column extends Column<string> {
     return this._interned !== null;
   }
 
+  /** Raw interned storage — exposed for fast-path operations (filter, groupby, sort). */
+  get internedStorage(): Readonly<InternedStorage> | null {
+    return this._interned;
+  }
+
+  /** Whether all values are non-null. */
+  get allValid(): boolean {
+    return this._allValid;
+  }
+
+  /** Raw null mask. */
+  get nullMask(): BitArray {
+    return this._nullMask;
+  }
+
+  /** Raw data array (only for non-interned columns). */
+  get rawData(): string[] | null {
+    return this._data;
+  }
+
   get(index: number): string | null {
     this._boundsCheck(index);
     if (this._allValid) {
@@ -161,51 +181,68 @@ export class Utf8Column extends Column<string> {
     return bytes;
   }
 
+  /**
+   * Single-pass construction from values array.
+   * Builds dictionary, indices, and null mask in one loop.
+   * Falls back to plain storage if cardinality > 50%.
+   */
   static from(values: (string | null)[]): Utf8Column {
     const len = values.length;
-    const data: string[] = new Array<string>(len);
+    if (len === 0) {
+      return new Utf8Column([]);
+    }
+
+    // Single-pass: build dictionary + indices + null mask simultaneously
+    const dictMap = new Map<string, number>();
+    const dictionary: string[] = [];
+    const indices = new Uint32Array(len);
     const mask = new BitArray(len);
     let hasNull = false;
+    let dictSize = 0;
+
     for (let i = 0; i < len; i++) {
       const v = values[i];
       if (v !== null && v !== undefined) {
-        data[i] = v;
         mask.set(i, true);
+        let idx = dictMap.get(v);
+        if (idx === undefined) {
+          idx = dictSize++;
+          dictMap.set(v, idx);
+          dictionary.push(v);
+        }
+        indices[i] = idx;
       } else {
-        data[i] = '';
         hasNull = true;
       }
     }
 
-    // Detect low-cardinality: if unique non-null values < 50% of total rows, use interning
-    if (len > 0) {
-      const uniqueSet = new Set<string>();
-      let nonNullCount = 0;
-      for (let i = 0; i < len; i++) {
-        if (mask.getUnsafe(i)) {
-          uniqueSet.add(data[i]!);
-          nonNullCount++;
-        }
-      }
-      if (nonNullCount > 0 && uniqueSet.size < len * 0.5) {
-        const dictionary: string[] = Array.from(uniqueSet);
-        const dictMap = new Map<string, number>();
-        for (let d = 0; d < dictionary.length; d++) {
-          dictMap.set(dictionary[d]!, d);
-        }
-        const indices = new Uint32Array(len);
-        for (let i = 0; i < len; i++) {
-          if (mask.getUnsafe(i)) {
-            indices[i] = dictMap.get(data[i]!)!;
-          }
-        }
-        return hasNull
-          ? new Utf8Column(data, mask, { dictionary, indices })
-          : new Utf8Column(data, undefined, { dictionary, indices });
-      }
+    // Decide interning: if unique < 50% of rows, use interned storage
+    if (dictSize > 0 && dictSize < len * 0.5) {
+      return hasNull
+        ? new Utf8Column(new Array<string>(len), mask, { dictionary, indices })
+        : new Utf8Column(new Array<string>(len), undefined, { dictionary, indices });
+    }
+
+    // High cardinality — use plain storage
+    const data: string[] = new Array<string>(len);
+    for (let i = 0; i < len; i++) {
+      data[i] = values[i] ?? '';
     }
 
     return hasNull ? new Utf8Column(data, mask) : new Utf8Column(data);
+  }
+
+  /**
+   * Construct from pre-interned data.
+   * Used when caller already knows the dictionary (e.g., from CSV parser).
+   */
+  static fromPreInterned(
+    dictionary: string[],
+    indices: Uint32Array,
+    nullMask?: BitArray,
+  ): Utf8Column {
+    const len = indices.length;
+    return new Utf8Column(new Array<string>(len), nullMask, { dictionary, indices });
   }
 
   private _boundsCheck(index: number): void {
