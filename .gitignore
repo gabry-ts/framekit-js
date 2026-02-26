@@ -6,3 +6,6 @@ coverage/
 /ralph
 /ralph
 /ralph
+
+.tsbuild-node/
+packages/playground/dist/
