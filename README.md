@@ -7,10 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 ![TypeScript](https://img.shields.io/badge/TypeScript-first-blue?logo=typescript&logoColor=white)
 ![Node.js](https://img.shields.io/badge/node-%3E%3D18-brightgreen?logo=node.js&logoColor=white)
-[![GitHub stars](https://img.shields.io/github/stars/gabry-ts/framekit-js?style=social)](https://github.com/gabry-ts/framekit-js/stargazers)
-[![GitHub forks](https://img.shields.io/github/forks/gabry-ts/framekit-js?style=social)](https://github.com/gabry-ts/framekit-js/network/members)
 [![GitHub issues](https://img.shields.io/github/issues/gabry-ts/framekit-js)](https://github.com/gabry-ts/framekit-js/issues)
-[![GitHub last commit](https://img.shields.io/github/last-commit/gabry-ts/framekit-js)](https://github.com/gabry-ts/framekit-js/commits/main)
 
 > DataFrames for TypeScript that don't make you wish you were using Python.
 >
