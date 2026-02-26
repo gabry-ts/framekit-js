@@ -1,7 +1,30 @@
 # FrameKit
 
+[![Bench Smoke](https://github.com/gabry-ts/framekit/actions/workflows/bench-smoke.yml/badge.svg)](https://github.com/gabry-ts/framekit/actions/workflows/bench-smoke.yml)
+[![Bench Nightly](https://github.com/gabry-ts/framekit/actions/workflows/bench-nightly.yml/badge.svg)](https://github.com/gabry-ts/framekit/actions/workflows/bench-nightly.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/gabry-ts/framekit?style=social)](https://github.com/gabry-ts/framekit/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/gabry-ts/framekit?style=social)](https://github.com/gabry-ts/framekit/network/members)
+[![GitHub issues](https://img.shields.io/github/issues/gabry-ts/framekit)](https://github.com/gabry-ts/framekit/issues)
+[![GitHub last commit](https://img.shields.io/github/last-commit/gabry-ts/framekit)](https://github.com/gabry-ts/framekit/commits/main)
+[![npm publish](https://img.shields.io/badge/npm-coming_soon-blue)](https://www.npmjs.com/)
+
 FrameKit is a TypeScript-first DataFrame engine for Node.js.
 It focuses on three things that matter in real analytics projects: clear APIs, predictable null behavior, and production-ready data I/O.
+
+## Table of Contents
+
+- [Why FrameKit](#why-framekit)
+- [Feature Overview](#feature-overview)
+- [Install](#install)
+- [60-Second Example](#60-second-example)
+- [Eager and Lazy APIs](#eager-and-lazy-apis)
+- [I/O Matrix](#io-matrix)
+- [Core and Compat APIs](#core-and-compat-apis)
+- [Documentation and Wiki](#documentation-and-wiki)
+- [Benchmarks and Quality](#benchmarks-and-quality)
+- [Project Standards](#project-standards)
+- [License](#license)
 
 ## Why FrameKit
 
@@ -92,12 +115,13 @@ const lazy = source.lazy().filter(col<number>('temp').gt(27)).select('city', 'te
 
 Start here for migration examples: `docs/guides/migration-arquero.md`.
 
-## Documentation Map
+## Documentation and Wiki
 
 - Getting started: `docs/getting-started/quickstart.md`
 - Guides: `docs/guides/`
 - Cookbook examples: `docs/cookbook/`
 - API references: `docs/reference/`
+- GitHub Wiki: `https://github.com/gabry-ts/framekit/wiki`
 
 ## Benchmarks and Quality
 
