@@ -8,7 +8,7 @@ describe('benchmark compare reshape', () => {
     const warmup = Number(process.env.BENCH_WARMUP ?? '1');
     const iterations = Number(process.env.BENCH_ITERS ?? '5');
     const df = mixedDataset(rows);
-    const rowsData = df.toArray() as Record<string, unknown>[];
+    const rowsData: Record<string, unknown>[] = df.toArray();
 
     const framekit = await runCase(
       'framekit-reshape',

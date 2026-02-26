@@ -13,7 +13,7 @@ describe('benchmark compare groupby', () => {
     const warmup = Number(process.env.BENCH_WARMUP ?? '1');
     const iterations = Number(process.env.BENCH_ITERS ?? '5');
     const df = numericDataset(rows);
-    const rowsData = df.toArray() as Record<string, unknown>[];
+    const rowsData: Record<string, unknown>[] = df.toArray();
 
     const framekit = await runCase(
       'framekit-groupby',
@@ -36,7 +36,7 @@ describe('benchmark compare groupby', () => {
         'arquero-groupby',
         () => {
           return table.groupby('group').rollup({
-            total: (d: Record<string, unknown>) => op.sum(d.amount as unknown),
+            total: (d: Record<string, unknown>) => op.sum(d.amount),
           });
         },
         warmup,

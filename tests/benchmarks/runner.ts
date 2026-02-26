@@ -23,7 +23,7 @@ function percentile(sorted: number[], p: number): number {
 
 export async function runCase(
   name: string,
-  fn: () => unknown | Promise<unknown>,
+  fn: () => unknown,
   warmup = 2,
   iterations = 10,
 ): Promise<BenchmarkResult> {
@@ -87,7 +87,8 @@ export async function runCase(
 
       if (typeof candidate.objects === 'function') {
         let count = 0;
-        for (const _row of candidate.objects()) {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for (const _ of candidate.objects()) {
           count++;
         }
         if (count < 0) {

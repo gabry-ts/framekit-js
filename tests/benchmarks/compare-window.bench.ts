@@ -13,7 +13,7 @@ describe('benchmark compare window', () => {
     const warmup = Number(process.env.BENCH_WARMUP ?? '1');
     const iterations = Number(process.env.BENCH_ITERS ?? '5');
     const df = numericDataset(rows);
-    const rowsData = df.toArray() as Record<string, unknown>[];
+    const rowsData: Record<string, unknown>[] = df.toArray();
 
     const framekit = await runCase(
       'framekit-window',
