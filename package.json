@@ -3,6 +3,9 @@
   "version": "0.1.0",
   "description": "The TypeScript-first DataFrame library for Node.js",
   "type": "module",
+  "workspaces": [
+    "packages/*"
+  ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -46,6 +49,8 @@
   },
   "scripts": {
     "build": "tsup",
+    "playground": "npm run dev -w packages/playground",
+    "playground:build": "npm run build -w packages/playground",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:coverage": "vitest run --coverage",
